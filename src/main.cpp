@@ -49,7 +49,7 @@
 #define UP 1
 #define DOWN 2
 
-#define MAX_ANGLE 0.26179938779 //15°
+#define MAX_ANGLE 0.13089966389//7.5°
 #define MIN_ANGLE -0.26179938779 // -15°
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -274,12 +274,16 @@ int main(int argc, char* argv[])
 
     // Carregamos duas imagens para serem utilizadas como textura
     LoadTextureImage("../../data/cow_texture.jpg");      // TextureImage0
+    LoadTextureImage("../../data/grass_texture.jpg");
 
 
     ObjModel cowmodel("../../data/cow.obj");
     ComputeNormals(&cowmodel);
     BuildTrianglesAndAddToVirtualScene(&cowmodel);
 
+    ObjModel planemodel("../../data/plane.obj");
+    ComputeNormals(&planemodel);
+    BuildTrianglesAndAddToVirtualScene(&planemodel);
     if ( argc > 1 )
     {
         ObjModel model(argv[1]);
@@ -317,7 +321,7 @@ int main(int argc, char* argv[])
         // Conversaremos sobre sistemas de cores nas aulas de Modelos de Iluminação.
         //
         //           R     G     B     A
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.1f, 0.2f, 0.0f, 1.0f);
 
         // "Pintamos" todos os pixels do framebuffer com a cor definida acima,
         // e também resetamos todos os pixels do Z-buffer (depth buffer).
@@ -388,7 +392,7 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
         #define COW  1
-
+        #define PLANE 2
 
         double current_time = glfwGetTime();
         double ellapsed_time = current_time - prev_time;
@@ -406,14 +410,37 @@ int main(int argc, char* argv[])
                 angularMovementDirection = UP;
             }
         }
+        //as duas condições abaixo servem para evitar que o angulo se altere muito quando a
+        //renderização está pausada por movimento da janela
+        if(angle > 1.2 * MAX_ANGLE){
+            angle = MAX_ANGLE;
+            angularMovementDirection = DOWN;
+        }
+        if(angle < 1.2 * MIN_ANGLE){
+            angle = MIN_ANGLE;
+            angularMovementDirection = UP;
+        }
+
+
         prev_angle = angle;
+
+        //desenho da vaca
         model = Matrix_Rotate_Z(angle);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, COW);
         DrawVirtualObject("cow");
         prev_time = current_time;
 
+        //desenho do chão
+        model = Matrix_Translate(0.0f, -0.64f, 0.0f) *
+                Matrix_Scale(10.0f, 1.0f, 10.0f);
+        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(object_id_uniform, PLANE);
+        //faz o chão repetir espelhadamente para não notar transições
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 
+        DrawVirtualObject("plane");
 
 
         // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
@@ -588,6 +615,7 @@ void LoadShadersFromFiles()
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     glUseProgram(program_id);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
     glUseProgram(0);
 }
 
