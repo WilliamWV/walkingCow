@@ -475,7 +475,10 @@ int main(int argc, char* argv[])
                   Matrix_Translate(Camera.camera_position.x, Camera.camera_position.y, Camera.camera_position.z)
                   * Matrix_Rotate_Y(3.926990817+g_CameraTheta)  //depois a rotacionamos horizontalmente
                   * Matrix_Scale(0.05f, 0.05f, 0.05f); //primeiro escalamos a arma
-        model = model * Matrix_Rotate_X(g_CameraPhi);
+
+        model = model * Matrix_Rotate_X(-Camera.camera_view.y);
+        printf("%f\n", Camera.camera_view.y);
+        printf("cartesian : %f %f %f", Camera.camera_view.x, Camera.camera_view.y, Camera.camera_view.z);
         model = model * Matrix_Translate(-10.0f, -18.0f, -4.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, M4A1);
@@ -1185,17 +1188,23 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     vVec /= norm(vVec);
     vVec *= (dy * cameraRotationSpeed);
 
-    glm::vec4 newView = Camera.camera_view + vVec + hVec;
+    glm::vec4 newView = (Camera.camera_view + vVec + hVec)/norm(Camera.camera_view + vVec + hVec);
     //evita que o vetor view fique na mesma direção do vetor up
     glm::vec3 sphericalView = toSpherical(newView.x, newView.y, newView.z);
+
     glm::vec4 oldViewVector = Camera.camera_view;
-    float phimax = 3.1f;
-    float phimin = -3.1f;
-    float phi = sphericalView.z;
-    if(phi <= phimax && phi>= phimin)
+    float phimin = 1.8f;
+    float phimax = 3.15;
+    float y = fabs(newView.y);
+
+    float maxy = 0.9f;
+    Camera.camera_view += (hVec);
+    Camera.camera_view /= norm(Camera.camera_view);
+
+    if(y<= maxy)
     {
 
-        Camera.camera_view += (vVec + hVec);
+        Camera.camera_view += (vVec);
         Camera.camera_view /= norm(Camera.camera_view);
 
     }
@@ -1224,8 +1233,8 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     //projeta no plano yz (vertical)
     tempNewY = newViewVector.x;
     tempOldY = oldViewVector.x;
-    oldViewVector.x = 0.0f;
-    newViewVector.x = 0.0f;
+    oldViewVector.z = 0.0f;
+    newViewVector.z = 0.0f;
     angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
     if(angleWeapon>=1 || angleWeapon<=-1) //necessário para acos() não retornar nan
         angleWeapon = 0;
@@ -1238,6 +1247,8 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     else
         g_CameraPhi = g_CameraPhi + angleWeapon;
 
+    oldViewVector.x = tempOldY;
+    newViewVector.x = tempNewY;
     // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
     phimax = 3.141592f/2;
     phimin = -phimax;
@@ -1663,7 +1674,7 @@ glm::vec3 toSpherical(float x, float y, float z)
 {
     float d = sqrt(x*x + y*y + z*z);
     float t = atan2(y,x);
-    float p = acos(z/d);
+    float p = atan2(d*sin(t),z);
     glm::vec3 v = glm::vec3(d, t, p);
     return v;
 }
