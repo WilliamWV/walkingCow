@@ -267,7 +267,7 @@ int main(int argc, char* argv[])
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "INF01047 - The Walking Cow - Felipe Zorzo Pereira e William Wilbert Vargas", glfwGetPrimaryMonitor(), NULL);
+    window = glfwCreateWindow(800, 600, "INF01047 - The Walking Cow - Felipe Zorzo Pereira e William Wilbert Vargas", NULL/*glfwGetPrimaryMonitor()*/, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -317,6 +317,7 @@ int main(int argc, char* argv[])
     // Carregamos duas imagens para serem utilizadas como textura
     LoadTextureImage("../../data/cow_texture.jpg");      // TextureImage0
     LoadTextureImage("../../data/grass_texture.jpg");
+    LoadTextureImage("../../data/blackTexture.jpg");
 
 
     ObjModel cowmodel("../../data/cow.obj");
@@ -326,6 +327,11 @@ int main(int argc, char* argv[])
     ObjModel planemodel("../../data/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
+
+    ObjModel m4a1model("../../data/m4a1/m4a1.obj");
+    ComputeNormals(&m4a1model);
+    BuildTrianglesAndAddToVirtualScene(&m4a1model);
+
     if ( argc > 1 )
     {
         ObjModel model(argv[1]);
@@ -354,6 +360,10 @@ int main(int argc, char* argv[])
     double prev_time = glfwGetTime();
     double prev_angle = 0.0;
     double prev_cameraBalAngle = 0.0;
+
+    //model = Matrix_Identity(); // Transformação identidade de modelagem
+    //model = model * Matrix_Translate(initialCameraPos.x+0.5, initialCameraPos.y-1.0f, initialCameraPos.z-0.5f);
+    //model = Matrix_Rotate_Y(150);
     while (!glfwWindowShouldClose(window))
     {
         // Aqui executamos as operações de renderização
@@ -419,7 +429,6 @@ int main(int argc, char* argv[])
             projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
         }
 
-        glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
@@ -429,6 +438,7 @@ int main(int argc, char* argv[])
 
         #define COW  1
         #define PLANE 2
+        #define M4A1 3
 
         double current_time = glfwGetTime();
         double ellapsed_time = current_time - prev_time;
@@ -460,11 +470,20 @@ int main(int argc, char* argv[])
 
         prev_angle = angle;
 
+        glm::mat4 model = Matrix_Translate(Camera.camera_position.x+0.5, Camera.camera_position.y-1.0f, Camera.camera_position.z-0.5f) // e, por fim, a posicionamos perto da camera
+                  * Matrix_Rotate_Y(55+g_CameraTheta)  //depois a rotacionamos horizontalmente
+                  * Matrix_Rotate_X(g_CameraPhi)       //depois a rotacionamos verticalmente
+                  * Matrix_Scale(0.05f, 0.05f, 0.05f); //primeiro escalamos a arma
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, M4A1);
+        DrawVirtualObject("weapon");
+
         //desenho da vaca
         model = Matrix_Rotate_Z(angle);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, COW);
         DrawVirtualObject("cow");
+
         //desenho do chão
         model = Matrix_Translate(0.0f, -0.64f, 0.0f) *
                 Matrix_Scale(10.0f, 1.0f, 10.0f);
@@ -473,7 +492,6 @@ int main(int argc, char* argv[])
         //faz o chão repetir espelhadamente para não notar transições
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-
         DrawVirtualObject("plane");
 
         double cameraBalanceAngle;
@@ -504,8 +522,6 @@ int main(int argc, char* argv[])
         // passamos por todos os sistemas de coordenadas armazenados nas
         // matrizes the_model, the_view, e the_projection; e escrevemos na tela
         // as matrizes e pontos resultantes dessas transformações.
-        //glm::vec4 p_model(0.5f, 0.5f, 0.5f, 1.0f);
-        //TextRendering_ShowModelViewProjection(window, projection, view, model, p_model);
 
         // Imprimimos na tela os ângulos de Euler que controlam a rotação do
         // terceiro cubo.
@@ -676,6 +692,7 @@ void LoadShadersFromFiles()
     glUseProgram(program_id);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
     glUseProgram(0);
 }
 
@@ -1166,7 +1183,6 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     vVec *= (dy * cameraRotationSpeed);
 
     glm::vec4 newView = Camera.camera_view + vVec + hVec;
-
     //evita que o vetor view fique na mesma direção do vetor up
     glm::vec3 sphericalView = toSpherical(newView.x, newView.y, newView.z);
     float phimax = 3.1f;
@@ -1181,20 +1197,19 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     }//de outra forma o vetor view não deve ser modificado
 
 
-
-    //g_CameraTheta -= 0.01f*dx;
-    //g_CameraPhi   += 0.01f*dy;
+    g_CameraTheta -= cameraRotationSpeed*dx;
+    g_CameraPhi   += cameraRotationSpeed*dy;
 
     // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
-    /*float phimax = 3.141592f/2;
-    float phimin = -phimax;
+    phimax = 3.141592f/2;
+    phimin = -phimax;
 
     if (g_CameraPhi > phimax)
         g_CameraPhi = phimax;
 
     if (g_CameraPhi < phimin)
         g_CameraPhi = phimin;
-    */
+
     // Atualizamos as variáveis globais para armazenar a posição atual do
     // cursor como sendo a última posição conhecida do cursor.
     g_LastCursorPosX = xpos;
@@ -1586,6 +1601,25 @@ void setCameraPosition(float x, float y, float z)
     Camera.camera_position.z = z;
 
 }
+
+/*void setWeaponPosition(float deltax, float deltay, float deltaz)
+{
+    model = model *  Matrix_Translate(deltax, deltay, deltaz);
+
+}*/
+
+/*void setWeaponAngle(float anglex, float angley, float anglez)
+{
+    model = model
+                      * Matrix_Rotate_Z(anglez)
+                      * Matrix_Rotate_Y(angley)
+                      * Matrix_Rotate_X(anglex);
+}*/
+
+/*void setWeaponAngle2(float angle, glm::vec4 view)
+{
+    model = model * Matrix_Rotate(angle, view);
+}*/
 
 glm::vec3 toSpherical(float x, float y, float z)
 {
