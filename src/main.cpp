@@ -179,6 +179,7 @@ bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mous
 // renderização.
 float g_CameraTheta = 0.0f; // Ângulo no plano ZX em relação ao eixo Z
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
+float g_CameraRo = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraDistance = 3.5f; // Distância da câmera para a origem
 
 // Variáveis que controlam rotação do antebraço
@@ -470,10 +471,12 @@ int main(int argc, char* argv[])
 
         prev_angle = angle;
 
-        glm::mat4 model = Matrix_Translate(Camera.camera_position.x+0.5, Camera.camera_position.y-1.0f, Camera.camera_position.z-0.5f) // e, por fim, a posicionamos perto da camera
-                  * Matrix_Rotate_Y(55+g_CameraTheta)  //depois a rotacionamos horizontalmente
-                  * Matrix_Rotate_X(g_CameraPhi)       //depois a rotacionamos verticalmente
+        glm::mat4 model =
+                  Matrix_Translate(Camera.camera_position.x, Camera.camera_position.y, Camera.camera_position.z)
+                  * Matrix_Rotate_Y(3.926990817+g_CameraTheta)  //depois a rotacionamos horizontalmente
                   * Matrix_Scale(0.05f, 0.05f, 0.05f); //primeiro escalamos a arma
+        model = model * Matrix_Rotate_X(g_CameraPhi);
+        model = model * Matrix_Translate(-10.0f, -18.0f, -4.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, M4A1);
         DrawVirtualObject("weapon");
@@ -1185,6 +1188,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     glm::vec4 newView = Camera.camera_view + vVec + hVec;
     //evita que o vetor view fique na mesma direção do vetor up
     glm::vec3 sphericalView = toSpherical(newView.x, newView.y, newView.z);
+    glm::vec4 oldViewVector = Camera.camera_view;
     float phimax = 3.1f;
     float phimin = -3.1f;
     float phi = sphericalView.z;
@@ -1194,11 +1198,45 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
         Camera.camera_view += (vVec + hVec);
         Camera.camera_view /= norm(Camera.camera_view);
 
-    }//de outra forma o vetor view não deve ser modificado
+    }
+    else
+        printf("wtf\n");
+    glm::vec4 newViewVector = Camera.camera_view;
+    //projeta no plano xz (horizontal)
+    float tempNewY = newViewVector.y;
+    float tempOldY = oldViewVector.y;
+    oldViewVector.y = 0.0f;
+    newViewVector.y = 0.0f;
+    float angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
+    if(angleWeapon>=1 || angleWeapon<=-1)  //necessário para acos() não retornar nan
+        angleWeapon = 0;
+    else
+        angleWeapon = acos(angleWeapon);
+    if(dx<0)
+    {
+        g_CameraTheta = g_CameraTheta + angleWeapon;
+    }
+    else
+        g_CameraTheta = g_CameraTheta - angleWeapon;
 
-
-    g_CameraTheta -= cameraRotationSpeed*dx;
-    g_CameraPhi   += cameraRotationSpeed*dy;
+    oldViewVector.y = tempOldY;
+    newViewVector.y = tempNewY;
+    //projeta no plano yz (vertical)
+    tempNewY = newViewVector.x;
+    tempOldY = oldViewVector.x;
+    oldViewVector.x = 0.0f;
+    newViewVector.x = 0.0f;
+    angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
+    if(angleWeapon>=1 || angleWeapon<=-1) //necessário para acos() não retornar nan
+        angleWeapon = 0;
+    else
+        angleWeapon = acos(angleWeapon);
+    if(dy<0)
+    {
+        g_CameraPhi = g_CameraPhi - angleWeapon;
+    }
+    else
+        g_CameraPhi = g_CameraPhi + angleWeapon;
 
     // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
     phimax = 3.141592f/2;
