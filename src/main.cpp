@@ -181,7 +181,6 @@ float g_CameraTheta = 0.0f; // Ângulo no plano ZX em relação ao eixo Z
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraRo = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraDistance = 3.5f; // Distância da câmera para a origem
-
 // Variáveis que controlam rotação do antebraço
 float g_ForearmAngleZ = 0.0f;
 float g_ForearmAngleX = 0.0f;
@@ -229,6 +228,12 @@ float walkHeightAmplitude = 0.05f;
 const glm::vec4 initialCameraPos = glm::vec4(2.0f, 1.0f, 2.0f, 1.0f);
 const glm::vec4 initialCameraView = glm::vec4(-2.0f, -1.0f, -2.0f, 0.0f)/norm(glm::vec4(-2.0f, -1.0f, -2.0f, 0.0f));
 const glm::vec4 cameraUpVec = glm::vec4(0.0f, 1.0f, 0.0f, 0.0);
+
+float yRotation = 0.0f;
+float xRotation = 0.0f;
+float zRotation = 0.0f;
+
+const glm::vec4 baseWeaponVector = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
 
 struct FreeCamera{
     glm::vec4 camera_position;
@@ -373,6 +378,7 @@ int main(int argc, char* argv[])
     float teste = 0.1;
     while (!glfwWindowShouldClose(window))
     {
+        FramebufferSizeCallback(window, 800, 600);
         // Aqui executamos as operações de renderização
 
         // Definimos a cor do "fundo" do framebuffer como branco.  Tal cor é
@@ -478,14 +484,19 @@ int main(int argc, char* argv[])
 
         prev_angle = angle;
 
+
+        glm::vec4 HorizCrossProduct = crossproduct(Camera.camera_view, Camera.camera_up);
         glm::mat4 model =
                   Matrix_Translate(Camera.camera_position.x, Camera.camera_position.y, Camera.camera_position.z)
-                  * Matrix_Rotate_Y(3.926990817+g_CameraTheta)  //depois a rotacionamos horizontalmente
+                  * Matrix_Rotate_Y(3.92 + yRotation)  //depois a rotacionamos horizontalmente
+                  * Matrix_Rotate_X(-Camera.camera_view.y)
                   * Matrix_Scale(0.05f, 0.05f, 0.05f); //primeiro escalamos a arma
-
-        model = model * Matrix_Rotate_X(-Camera.camera_view.y);
+        //printf("x: %f\ty: %f\tz: %f\n", xRotation, yRotation, zRotation);
+        //printf("V : %f\t%f\t%f\n", HorizCrossProduct.x, HorizCrossProduct.y, HorizCrossProduct.z);
+        //printf("cameraphi : %f\n", g_CameraPhi);
+        //model = model * Matrix_Rotate_X(1+ g_CameraPhi, Horiz);
         //printf("%f\n", Camera.camera_view.y);
-        //printf("cartesian : %f %f %f", Camera.camera_view.x, Camera.camera_view.y, Camera.camera_view.z);
+        printf("cartesian : %f %f %f\n", Camera.camera_view.x, Camera.camera_view.y, Camera.camera_view.z);
         model = model * Matrix_Translate(-10.0f, -18.0f, -4.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, M4A1);
@@ -498,9 +509,10 @@ int main(int argc, char* argv[])
         model = model
                     * Matrix_Translate(viewPoint.x, viewPoint.y, viewPoint.z)
                     //* Matrix_Translate(Camera.camera_position.x-1.0f, Camera.camera_position.y, Camera.camera_position.z)
-                    * Matrix_Rotate_Y(0.45+g_CameraTheta)
-                    * Matrix_Scale(0.03f, 0.03f, 0.03f);
-        //model = model * Matrix_Rotate_X(Camera.camera_view.y);
+                    * Matrix_Rotate_Y(0.809+yRotation)
+                    * Matrix_Rotate_X(Camera.camera_view.y)
+                    * Matrix_Scale(0.01f, 0.01f, 0.01f);
+        model = model * Matrix_Rotate_X(g_CameraPhi);
         /*printf("camera_view.z: %f", Camera.camera_view.z);
         printf("    camera_position.z: %f", Camera.camera_position.z);
         printf("    viewPoint.z: %f", viewPoint.z);
@@ -1235,8 +1247,6 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
         Camera.camera_view /= norm(Camera.camera_view);
 
     }
-    else
-        printf("wtf\n");
     glm::vec4 newViewVector = Camera.camera_view;
     //projeta no plano xz (horizontal)
     float tempNewY = newViewVector.y;
@@ -1250,33 +1260,53 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
         angleWeapon = acos(angleWeapon);
     if(dx<0)
     {
-        g_CameraTheta = g_CameraTheta + angleWeapon;
+        yRotation = yRotation + angleWeapon;
     }
     else
-        g_CameraTheta = g_CameraTheta - angleWeapon;
+        yRotation = yRotation - angleWeapon;
 
     oldViewVector.y = tempOldY;
     newViewVector.y = tempNewY;
     //projeta no plano yz (vertical)
     tempNewY = newViewVector.x;
     tempOldY = oldViewVector.x;
-    oldViewVector.z = 0.0f;
-    newViewVector.z = 0.0f;
-    angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
+    oldViewVector.x = 0.0f;
+    newViewVector.x = 0.0f;
+    angleWeapon = dotproduct(baseWeaponVector, newViewVector)/(length(newViewVector) * length(baseWeaponVector));
     if(angleWeapon>=1 || angleWeapon<=-1) //necessário para acos() não retornar nan
         angleWeapon = 0;
     else
         angleWeapon = acos(angleWeapon);
-    if(dy<0)
+
+    float minX = -1.12;
+    float maxX = 1.12;
+    if(newViewVector.y<0)
     {
-        g_CameraPhi = g_CameraPhi - angleWeapon;
+        xRotation = angleWeapon;
     }
     else
-        g_CameraPhi = g_CameraPhi + angleWeapon;
+        xRotation = -angleWeapon;
 
+    if(xRotation > M_PI/2){
+        xRotation = M_PI - xRotation;
+    }
+    else if(xRotation < - M_PI/2){
+        xRotation = -M_PI - xRotation;
+    }
+
+    if(xRotation > maxX){
+        xRotation = maxX;
+    }
+    else if(xRotation < minX){
+        xRotation = minX;
+    }
     oldViewVector.x = tempOldY;
     newViewVector.x = tempNewY;
+
+
     // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
+
+    /*
     phimax = 3.141592f/2;
     phimin = -phimax;
 
@@ -1285,7 +1315,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 
     if (g_CameraPhi < phimin)
         g_CameraPhi = phimin;
-
+*/
     // Atualizamos as variáveis globais para armazenar a posição atual do
     // cursor como sendo a última posição conhecida do cursor.
     g_LastCursorPosX = xpos;
