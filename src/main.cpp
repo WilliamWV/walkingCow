@@ -227,7 +227,7 @@ float cameraRotationSpeed = 0.003f;
 float cameraBaseHeight = 1.0f;
 float walkHeightAmplitude = 0.05f;
 const glm::vec4 initialCameraPos = glm::vec4(2.0f, 1.0f, 2.0f, 1.0f);
-const glm::vec4 initialCameraView = glm::vec4(-2.0f, -2.0f, -2.0f, 0.0f);
+const glm::vec4 initialCameraView = glm::vec4(-2.0f, -1.0f, -2.0f, 0.0f)/norm(glm::vec4(-2.0f, -1.0f, -2.0f, 0.0f));
 const glm::vec4 cameraUpVec = glm::vec4(0.0f, 1.0f, 0.0f, 0.0);
 
 struct FreeCamera{
@@ -319,6 +319,7 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/cow_texture.jpg");      // TextureImage0
     LoadTextureImage("../../data/grass_texture.jpg");
     LoadTextureImage("../../data/blackTexture.jpg");
+    LoadTextureImage("../../data/yellowTexture.jpg");
 
 
     ObjModel cowmodel("../../data/cow.obj");
@@ -332,6 +333,10 @@ int main(int argc, char* argv[])
     ObjModel m4a1model("../../data/m4a1/m4a1.obj");
     ComputeNormals(&m4a1model);
     BuildTrianglesAndAddToVirtualScene(&m4a1model);
+
+    ObjModel chairmodel("../../data/chair1.obj");
+    ComputeNormals(&chairmodel);
+    BuildTrianglesAndAddToVirtualScene(&chairmodel);
 
     if ( argc > 1 )
     {
@@ -365,6 +370,7 @@ int main(int argc, char* argv[])
     //model = Matrix_Identity(); // Transformação identidade de modelagem
     //model = model * Matrix_Translate(initialCameraPos.x+0.5, initialCameraPos.y-1.0f, initialCameraPos.z-0.5f);
     //model = Matrix_Rotate_Y(150);
+    float teste = 0.1;
     while (!glfwWindowShouldClose(window))
     {
         // Aqui executamos as operações de renderização
@@ -440,6 +446,7 @@ int main(int argc, char* argv[])
         #define COW  1
         #define PLANE 2
         #define M4A1 3
+        #define CHAIR 4
 
         double current_time = glfwGetTime();
         double ellapsed_time = current_time - prev_time;
@@ -477,18 +484,37 @@ int main(int argc, char* argv[])
                   * Matrix_Scale(0.05f, 0.05f, 0.05f); //primeiro escalamos a arma
 
         model = model * Matrix_Rotate_X(-Camera.camera_view.y);
-        printf("%f\n", Camera.camera_view.y);
-        printf("cartesian : %f %f %f", Camera.camera_view.x, Camera.camera_view.y, Camera.camera_view.z);
+        //printf("%f\n", Camera.camera_view.y);
+        //printf("cartesian : %f %f %f", Camera.camera_view.x, Camera.camera_view.y, Camera.camera_view.z);
         model = model * Matrix_Translate(-10.0f, -18.0f, -4.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, M4A1);
         DrawVirtualObject("weapon");
 
-        //desenho da vaca
-        model = Matrix_Rotate_Z(angle);
+        glm::vec4 viewPoint = Camera.camera_position + Camera.camera_view;
+        model = Matrix_Identity();
+
+        teste += 0.1;
+        model = model
+                    * Matrix_Translate(viewPoint.x, viewPoint.y, viewPoint.z)
+                    //* Matrix_Translate(Camera.camera_position.x-1.0f, Camera.camera_position.y, Camera.camera_position.z)
+                    * Matrix_Rotate_Y(0.45+g_CameraTheta)
+                    * Matrix_Scale(0.03f, 0.03f, 0.03f);
+        //model = model * Matrix_Rotate_X(Camera.camera_view.y);
+        /*printf("camera_view.z: %f", Camera.camera_view.z);
+        printf("    camera_position.z: %f", Camera.camera_position.z);
+        printf("    viewPoint.z: %f", viewPoint.z);
+        printf("    camera_view length: %f\n", length(Camera.camera_view) );*/
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, CHAIR);
+        DrawVirtualObject("Plane2");
+
+        /*//desenho da vaca
+        //model = Matrix_Rotate_Z(angle);
+        //model = Matrix_Translate(2.0f, 1.0f, 2.0f) * Matrix_Identity(); //inicia na mesma posição da camera, mostrando que apenas Matrix_Identity cria a vaca na pos 0,0,0 em coordenadas globais
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, COW);
-        DrawVirtualObject("cow");
+        DrawVirtualObject("cow");*/
 
         //desenho do chão
         model = Matrix_Translate(0.0f, -0.64f, 0.0f) *
@@ -699,6 +725,7 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage3"), 3);
     glUseProgram(0);
 }
 
