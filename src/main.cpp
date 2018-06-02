@@ -145,6 +145,7 @@ int createCow(double xpos, double zpos);
 void removeCow(int id);
 void updateCows(double ellapsed_time);
 void drawCows();
+double cowAngleToCamera(double xpos, double zpos);
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -503,7 +504,6 @@ int main(int argc, char* argv[])
         //printf("cameraphi : %f\n", g_CameraPhi);
         //model = model * Matrix_Rotate_X(1+ g_CameraPhi, Horiz);
         //printf("%f\n", Camera.camera_view.y);
-        printf("cartesian : %f %f %f\n", Camera.camera_view.x, Camera.camera_view.y, Camera.camera_view.z);
         model = model * Matrix_Translate(-10.0f, -18.0f, -4.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, M4A1);
@@ -1934,8 +1934,11 @@ void drawCows()
     CowList* tempCows = cows;
     while(tempCows!= NULL)
     {
+        double angleToCamera = cowAngleToCamera(tempCows->currentCow->xpos, tempCows->currentCow->zpos);
+        printf("cow angle : %f\n", angleToCamera);
         glm::mat4 model = Matrix_Translate(tempCows->currentCow->xpos, 0.0f, tempCows->currentCow->zpos)
                         * Matrix_Identity()
+                        * Matrix_Rotate_Y(angleToCamera)
                         * Matrix_Rotate_Z(tempCows->currentCow->angle);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, COW);
@@ -1944,6 +1947,18 @@ void drawCows()
     }
 }
 
+//determina o quanto a vaca deve rotacionar para olhar para o jogador
+double cowAngleToCamera(double xpos, double zpos)
+{
+    glm::vec4 baseCowView (1.0, 0.0, 0.0, 0.0);
+    glm::vec4 cowToPlayerVec (Camera.camera_position.x - xpos, 0.0, Camera.camera_position.z - zpos, 0.0);
+    double angle = acos(dotproduct(baseCowView, cowToPlayerVec) / ( length(baseCowView) * length(cowToPlayerVec) ));
+    if(Camera.camera_position.z > zpos)
+    {
+        angle = M_PI * 2 - angle;
+    }
+    return angle;
+}
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
