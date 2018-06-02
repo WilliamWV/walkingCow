@@ -51,6 +51,11 @@
 
 #define MAX_ANGLE 0.13089966389//7.5°
 #define MIN_ANGLE -0.26179938779 // -15°
+
+#define COW  1
+#define PLANE 2
+#define M4A1 3
+#define CHAIR 4
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
 struct ObjModel
@@ -135,6 +140,12 @@ void moveRight();
 
 void handleMovement();
 
+//retorna um id da vaca que poderá ser usado para deletá-la posteriormente
+int createCow(double xpos, double zpos);
+void removeCow(int id);
+void updateCows(double ellapsed_time);
+void drawCows();
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -209,6 +220,26 @@ GLint bbox_max_uniform;
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
+struct FreeCamera{
+    glm::vec4 camera_position;
+    glm::vec4 camera_view;
+    glm::vec4 camera_up;
+};
+
+typedef struct cowStruct{
+    int id;
+    double xpos;
+    double zpos;
+    double angle;
+    int angularMovementDirection;
+}Cow;
+
+typedef struct cowList CowList;
+
+struct cowList{
+    Cow* currentCow;
+    CowList* next;
+};
 
 //velocidade de rotação da vaca andando
 float cowAngularSpeed = M_PI /2.0; // 90° per second
@@ -233,13 +264,12 @@ float yRotation = 0.0f;
 float xRotation = 0.0f;
 float zRotation = 0.0f;
 
+int currentCowId = 1;
+
 const glm::vec4 baseWeaponVector = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
 
-struct FreeCamera{
-    glm::vec4 camera_position;
-    glm::vec4 camera_view;
-    glm::vec4 camera_up;
-};
+
+CowList* cows = NULL;
 
 FreeCamera Camera;
 
@@ -376,6 +406,9 @@ int main(int argc, char* argv[])
     //model = model * Matrix_Translate(initialCameraPos.x+0.5, initialCameraPos.y-1.0f, initialCameraPos.z-0.5f);
     //model = Matrix_Rotate_Y(150);
     float teste = 0.1;
+
+    createCow(rand()%10, rand()%10);
+
     while (!glfwWindowShouldClose(window))
     {
         FramebufferSizeCallback(window, 800, 600);
@@ -449,40 +482,14 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-        #define COW  1
-        #define PLANE 2
-        #define M4A1 3
-        #define CHAIR 4
+
 
         double current_time = glfwGetTime();
         double ellapsed_time = current_time - prev_time;
-        // Desenhamos o modelo da vaca
-        double angle;
-        if (angularMovementDirection == UP){
-            angle = prev_angle + cowAngularSpeed * ellapsed_time;
-            if(angle > MAX_ANGLE){
-                angularMovementDirection = DOWN;
-            }
-        }
-        else{
-            angle = prev_angle - cowAngularSpeed * ellapsed_time;
-            if(angle < MIN_ANGLE){
-                angularMovementDirection = UP;
-            }
-        }
-        //as duas condições abaixo servem para evitar que o angulo se altere muito quando a
-        //renderização está pausada por movimento da janela
-        if(angle > 1.2 * MAX_ANGLE){
-            angle = MAX_ANGLE;
-            angularMovementDirection = DOWN;
-        }
-        if(angle < 1.2 * MIN_ANGLE){
-            angle = MIN_ANGLE;
-            angularMovementDirection = UP;
-        }
 
 
-        prev_angle = angle;
+        updateCows(ellapsed_time);
+        drawCows();
 
 
         glm::vec4 HorizCrossProduct = crossproduct(Camera.camera_view, Camera.camera_up);
@@ -1152,6 +1159,12 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // com o botão esquerdo pressionado.
         glfwGetCursorPos(window, &g_LastCursorPosX, &g_LastCursorPosY);
         g_LeftMouseButtonPressed = true;
+        createCow(rand()%20 - 10, rand()%20 - 10); // TESTE DAS VACAS
+
+    }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    {
+        removeCow(rand()%currentCowId); // VAI REMOVER SOMENTE QUANDO O RAND FOR UM ID EXISTENTE
     }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
     {
@@ -1814,6 +1827,121 @@ void handleMovement()
     if(isDPressed)
         moveRight();
 
+}
+
+
+int createCow(double xpos, double zpos)
+{
+    Cow* calf = (Cow*) malloc(sizeof(Cow));
+    calf->id = currentCowId;
+    calf->xpos = xpos;
+    calf->zpos = zpos;
+    calf->angle = 0;
+    calf->angularMovementDirection = UP;
+
+    currentCowId++;
+
+    CowList* newNode = (CowList*) malloc(sizeof(CowList));
+    newNode->currentCow = calf;
+    newNode->next = NULL;
+
+    CowList* tempCows = cows;
+    CowList* prevCows = NULL;
+    if(tempCows == NULL){
+        cows = newNode;
+    }
+    else{
+        while(tempCows!= NULL)
+        {
+            prevCows = tempCows;
+            tempCows = tempCows->next;
+        }
+        prevCows->next = newNode;
+    }
+
+
+    return calf->id;
+}
+void removeCow(int id)
+{
+    CowList* tempCows = cows;
+    CowList* prevCows = NULL;
+
+    bool found = false;
+    while(tempCows!= NULL && !found){
+        if(tempCows->currentCow->id == id){
+            found = true;
+
+        }
+        else{
+            prevCows = tempCows;
+            tempCows = tempCows->next;
+        }
+    }
+    if(tempCows == NULL)
+    {
+        //não encontrou o id, logo faz nada
+
+    }
+    else if(found){
+        if(prevCows == NULL) // primeiro da lista
+        {
+            cows = tempCows->next;
+        }
+        else{
+            prevCows->next = tempCows->next;
+            free(tempCows);
+        }
+    }
+}
+
+void updateCows(double ellapsed_time)
+{
+    CowList* tempCows = cows;
+    while(tempCows!= NULL)
+    {
+        Cow* currentCow = tempCows->currentCow;
+        double angle;
+        if (currentCow->angularMovementDirection == UP){
+            angle = currentCow->angle + cowAngularSpeed * ellapsed_time;
+            if(angle > MAX_ANGLE){
+                currentCow->angularMovementDirection = DOWN;
+            }
+        }
+        else{
+            angle = currentCow->angle - cowAngularSpeed * ellapsed_time;
+            if(angle < MIN_ANGLE){
+                currentCow->angularMovementDirection = UP;
+            }
+        }
+        //as duas condições abaixo servem para evitar que o angulo se altere muito quando a
+        //renderização está pausada por movimento da janela
+        if(angle > 1.2 * MAX_ANGLE){
+            angle = MAX_ANGLE;
+            currentCow->angularMovementDirection = DOWN;
+        }
+        if(angle < 1.2 * MIN_ANGLE){
+            angle = MIN_ANGLE;
+            currentCow->angularMovementDirection = UP;
+        }
+        currentCow->angle = angle;
+        tempCows = tempCows->next;
+    }
+}
+
+void drawCows()
+{
+    CowList* tempCows = cows;
+    while(tempCows!= NULL)
+    {
+        glm::mat4 model = Matrix_Translate(tempCows->currentCow->xpos, 0.0f, tempCows->currentCow->zpos)
+                        * Matrix_Identity()
+                        * Matrix_Rotate_Z(tempCows->currentCow->angle);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, COW);
+        DrawVirtualObject("cow");
+        tempCows = tempCows->next;
+    }
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
