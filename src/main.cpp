@@ -354,7 +354,7 @@ int main(int argc, char* argv[])
     // Carregamos duas imagens para serem utilizadas como textura
     LoadTextureImage("../../data/cow_texture.jpg");      // TextureImage0
     LoadTextureImage("../../data/grass_texture.jpg");
-    LoadTextureImage("../../data/blackTexture.jpg");
+    LoadTextureImage("../../data/gun_texture.jpg");
     LoadTextureImage("../../data/yellowTexture.jpg");
 
 
@@ -449,7 +449,7 @@ int main(int argc, char* argv[])
         // estão no sentido negativo! Veja slides 191-194 do documento
         // "Aula_09_Projecoes.pdf".
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -25.0f; // Posição do "far plane"
+        float farplane  = -40.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -537,7 +537,7 @@ int main(int argc, char* argv[])
 
         //desenho do chão
         model = Matrix_Translate(0.0f, -0.64f, 0.0f) *
-                Matrix_Scale(10.0f, 1.0f, 10.0f);
+                Matrix_Scale(20.0f, 1.0f, 20.0f);
         glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(object_id_uniform, PLANE);
         //faz o chão repetir espelhadamente para não notar transições
@@ -1935,7 +1935,6 @@ void drawCows()
     while(tempCows!= NULL)
     {
         double angleToCamera = cowAngleToCamera(tempCows->currentCow->xpos, tempCows->currentCow->zpos);
-        printf("cow angle : %f\n", angleToCamera);
         glm::mat4 model = Matrix_Translate(tempCows->currentCow->xpos, 0.0f, tempCows->currentCow->zpos)
                         * Matrix_Identity()
                         * Matrix_Rotate_Y(angleToCamera)

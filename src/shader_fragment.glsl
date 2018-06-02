@@ -66,11 +66,20 @@ void main()
     // Vetor que define o sentido da câmera em relação ao ponto atual.
     vec4 v = normalize(camera_position - p);
 
+    vec4 r = -l + 2*n*dot(n,l);
+
+    vec4 halfVector = (v + l) / length(v+l);
+    vec3 Kd; // refletência difusa
+    vec3 Ks; // Refletância especular
+    vec3 Ka; // refletância ambiente
+
+    float q;
+
     // Coordenadas de textura U e V
     float U = 0.0;
     float V = 0.0;
 
-
+    bool fixColorObject = false;
     if ( object_id == COW )
     {
         // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
@@ -93,34 +102,24 @@ void main()
         U = (position_model.x -minx) / (maxx - minx);
         V = (position_model.y -miny) / (maxy - miny);
         // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-        vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
-        // Equação de Iluminação
-        float lambert = max(0,dot(n,l));
-
-        color = Kd0* (lambert + 0.01);
-
-        // Cor final com correção gamma, considerando monitor sRGB.
-        // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
-        color = pow(color, vec3(1.0,1.0,1.0)/2.2);
+        Kd = texture(TextureImage0, vec2(U,V)).rgb;
+        Ka = vec3(0.02, 0.02, 0.02);
+        Ks = vec3(0.01, 0.01, 0.01);
+        q = 8.0;
     }
     else if(object_id == PLANE)
     {
-        int xRepeat = int(floor(texcoords.x*10.0));
-        int yRepeat = int(floor(texcoords.y*10.0));
+        int xRepeat = int(floor(texcoords.x*20.0));
+        int yRepeat = int(floor(texcoords.y*20.0));
 
-        U = (texcoords.x)*10 - xRepeat;
-        V = (texcoords.y)*10 - yRepeat;
+        U = (texcoords.x)*20 - xRepeat;
+        V = (texcoords.y)*20 - yRepeat;
 
         // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-        vec3 Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
-        // Equação de Iluminação
-        float lambert = max(0,dot(n,l));
-
-        color = Kd0* (lambert + 0.01);
-
-        // Cor final com correção gamma, considerando monitor sRGB.
-        // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
-        color = pow(color, vec3(1.0,1.0,1.0)/2.2);
+        Kd = texture(TextureImage1, vec2(U,V)).rgb;
+        Ka = vec3(0.00, 0.00, 0.00);
+        Ks = vec3(0.0, 0.0, 0.0);
+        q = 1.0;
     }
     else if ( object_id == M4A1 )
     {
@@ -135,16 +134,13 @@ void main()
 
         U = (position_model.x -minx) / (maxx - minx);
         V = (position_model.y -miny) / (maxy - miny);
-        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-        vec3 Kd0 = texture(TextureImage2, vec2(U,V)).rgb;
-        // Equação de Iluminação
-        float lambert = max(0,dot(n,l));
 
-        color = Kd0* (lambert + 0.01);
+        Kd = texture(TextureImage2, vec2(U,V)).rgb;
+        Ka = vec3(0.02, 0.02, 0.02);
+        Ks = vec3(0.6, 0.6, 0.6);
 
-        // Cor final com correção gamma, considerando monitor sRGB.
-        // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
-        color = pow(color, vec3(1.0,1.0,1.0)/2.2);
+        q = 64.0;
+
     }
     else if ( object_id == CHAIR )
     {
@@ -159,17 +155,36 @@ void main()
 
         U = (position_model.x -minx) / (maxx - minx);
         V = (position_model.y -miny) / (maxy - miny);
-        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-        vec3 Kd0 = texture(TextureImage3, vec2(U,V)).rgb;
-        // Equação de Iluminação
-        float lambert = max(0,dot(n,l));
-
-        color = Kd0;
-
-        // Cor final com correção gamma, considerando monitor sRGB.
-        // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
-        color = pow(color, vec3(1.0,1.0,1.0)/2.2);
+        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage3
+        Kd = texture(TextureImage3, vec2(U,V)).rgb;
+        Ka = vec3(0.0, 0.0, 0.0);
+        Ks = vec3(0.0, 0.0, 0.0);
+        q = 0.0;
+        fixColorObject = true;
+    }
+    else{ // objeto desconhecido
+        Kd = vec3(0.0, 0.0, 0.0);
+        Ks = vec3(0.0, 0.0, 0.0);
+        Ka = vec3(0.0, 0.0, 0.0);
+        q = 1.0;
     }
 
+    if (fixColorObject){
+        color = Kd;
+        color = pow(color, vec3(1.0, 1.0, 1.0)/2.2);
+    }
+    else{
+        //espectro da fonte de iluminação
+        vec3 I = vec3(1.0, 1.0, 1.0); // luz branca
+        //espectro da luz ambiente
+        vec3 Ia = vec3(0.05, 0.05, 0.05);
+
+        vec3 lambert_diffuse_term = Kd * I * max(0.0, dot(n, l));
+        vec3 ambient_term = Ka * Ia;
+        vec3 phong_specular_term = Ks * I * pow(max(0, dot(n,halfVector)),q);
+
+        color = lambert_diffuse_term + ambient_term + phong_specular_term;
+        color = pow(color, vec3(1.0,1.0,1.0)/2.2);
+    }
 
 }
