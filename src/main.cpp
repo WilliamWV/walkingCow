@@ -13,7 +13,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-
+#include <ctime>
 // Headers abaixo são específicos de C++
 #include <map>
 #include <stack>
@@ -51,6 +51,15 @@
 
 #define MAX_ANGLE 0.13089966389//7.5°
 #define MIN_ANGLE -0.26179938779 // -15°
+
+#define GUN_RECOIL_ANGLE 0.01745329251//1º
+#define BULLET_SPEED 100
+#define MAX_DISTANCE_TO_BULLET 100
+
+#define MAX_NUM_OF_COWS 20
+
+#define MAP_X_REPEAT 20 // repetições da textura no plano
+#define MAP_Z_REPEAT 20
 
 #define COW  1
 #define PLANE 2
@@ -133,8 +142,8 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void setCameraPosition(float x, float y, float z);
 glm::vec3 toSpherical(float x, float y, float z);
 
-void moveForward(float d);
-void moveBack(float d);
+void moveForward();
+void moveBack();
 void moveLeft();
 void moveRight();
 
@@ -143,9 +152,17 @@ void handleMovement();
 //retorna um id da vaca que poderá ser usado para deletá-la posteriormente
 int createCow(double xpos, double zpos);
 void removeCow(int id);
-void updateCows(double ellapsed_time);
+void updateCows();
 void drawCows();
 double cowAngleToCamera(double xpos, double zpos);
+
+int createBullet();
+void removeBullet(int id);
+void updateBullet();
+void checkCollisionWithCows(glm::vec4 prevPos, glm::vec4 currentPos);
+
+void updateRecoil();
+void shoot();
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -242,9 +259,39 @@ struct cowList{
     CowList* next;
 };
 
+
+typedef struct bulletStruct{
+    int id;
+    glm::vec4 pos;
+    glm::vec4 direction;
+}Bullet;
+
+typedef struct bulletList BulletList;
+
+struct bulletList{
+        Bullet* currentBullet;
+        BulletList* next;
+};
+
+
 //velocidade de rotação da vaca andando
 float cowAngularSpeed = M_PI /2.0; // 90° per second
 float balanceSpeed = 7*M_PI;
+float recoilSpeed = M_PI;
+float currentRecoilAngle = 0.0f;
+int recoilDirection = UP;
+float shotDelay = 0.2f; // em s
+float currentShotDelay = 0.0f;
+bool onRecoil = false;
+
+float cowGenerationDelay = 1.0f; //s
+float currentCowDelay = 0.0f;
+float cowSpeed = 2.5;
+float minDistanceToCow = 1.0f;
+
+int currentLivingCows = 0;
+double ellapsed_time = 0;
+
 int angularMovementDirection = UP;
 bool isMoving = false;
 int isWPressed = false;
@@ -252,7 +299,7 @@ int isAPressed = false;
 int isSPressed = false;
 int isDPressed = false;
 
-float movementSpeed = 0.05f;
+float movementSpeed = 3.0f;
 //velocidade de rotação da câmera ao clicar e arrastar com o mouse
 float cameraRotationSpeed = 0.003f;
 float cameraBaseHeight = 1.0f;
@@ -266,11 +313,14 @@ float xRotation = 0.0f;
 float zRotation = 0.0f;
 
 int currentCowId = 1;
+int currentBulletId = 1;
 
 const glm::vec4 baseWeaponVector = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
 
 
 CowList* cows = NULL;
+BulletList* bullets = NULL;
+
 
 FreeCamera Camera;
 
@@ -400,7 +450,6 @@ int main(int argc, char* argv[])
     // Ficamos em loop, renderizando, até que o usuário feche a janela
 
     double prev_time = glfwGetTime();
-    double prev_angle = 0.0;
     double prev_cameraBalAngle = 0.0;
 
     //model = Matrix_Identity(); // Transformação identidade de modelagem
@@ -408,7 +457,6 @@ int main(int argc, char* argv[])
     //model = Matrix_Rotate_Y(150);
     float teste = 0.1;
 
-    createCow(rand()%10, rand()%10);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -486,18 +534,37 @@ int main(int argc, char* argv[])
 
 
         double current_time = glfwGetTime();
-        double ellapsed_time = current_time - prev_time;
+        ellapsed_time = current_time - prev_time;
 
+        if (currentShotDelay > 0){
+            currentShotDelay -= ellapsed_time;
+        }
+        if (onRecoil){
+                updateRecoil();
+        }
+        if (g_LeftMouseButtonPressed){
+            if(currentShotDelay <= 0){
+                shoot();
+            }
+        }
+        srand(time(NULL));
+        if(currentCowDelay > 0){
+            currentCowDelay -= ellapsed_time;
 
-        updateCows(ellapsed_time);
+        }
+        if(currentCowDelay <= 0 && currentLivingCows + 1 <= MAX_NUM_OF_COWS){
+            createCow(MAP_X_REPEAT/2 - 1 - rand()%(MAP_X_REPEAT - 2), MAP_Z_REPEAT/2 - 1 - rand()%(MAP_Z_REPEAT - 2)); // subtrai-se 2 para evitar que a vaca fique na parte de fora da borda do mapa
+            currentCowDelay = cowGenerationDelay;
+        }
+
+        updateCows();
         drawCows();
 
 
-        glm::vec4 HorizCrossProduct = crossproduct(Camera.camera_view, Camera.camera_up);
         glm::mat4 model =
                   Matrix_Translate(Camera.camera_position.x, Camera.camera_position.y, Camera.camera_position.z)
                   * Matrix_Rotate_Y(3.92 + yRotation)  //depois a rotacionamos horizontalmente
-                  * Matrix_Rotate_X(-Camera.camera_view.y)
+                  * Matrix_Rotate_X(-Camera.camera_view.y - currentRecoilAngle)
                   * Matrix_Scale(0.05f, 0.05f, 0.05f); //primeiro escalamos a arma
         //printf("x: %f\ty: %f\tz: %f\n", xRotation, yRotation, zRotation);
         //printf("V : %f\t%f\t%f\n", HorizCrossProduct.x, HorizCrossProduct.y, HorizCrossProduct.z);
@@ -520,20 +587,9 @@ int main(int argc, char* argv[])
                     * Matrix_Rotate_X(Camera.camera_view.y)
                     * Matrix_Scale(0.01f, 0.01f, 0.01f);
         model = model * Matrix_Rotate_X(g_CameraPhi);
-        /*printf("camera_view.z: %f", Camera.camera_view.z);
-        printf("    camera_position.z: %f", Camera.camera_position.z);
-        printf("    viewPoint.z: %f", viewPoint.z);
-        printf("    camera_view length: %f\n", length(Camera.camera_view) );*/
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, CHAIR);
         DrawVirtualObject("Plane2");
-
-        /*//desenho da vaca
-        //model = Matrix_Rotate_Z(angle);
-        //model = Matrix_Translate(2.0f, 1.0f, 2.0f) * Matrix_Identity(); //inicia na mesma posição da camera, mostrando que apenas Matrix_Identity cria a vaca na pos 0,0,0 em coordenadas globais
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, COW);
-        DrawVirtualObject("cow");*/
 
         //desenho do chão
         model = Matrix_Translate(0.0f, -0.64f, 0.0f) *
@@ -1159,9 +1215,10 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // com o botão esquerdo pressionado.
         glfwGetCursorPos(window, &g_LastCursorPosX, &g_LastCursorPosY);
         g_LeftMouseButtonPressed = true;
-        createCow(rand()%20 - 10, rand()%20 - 10); // TESTE DAS VACAS
+        //createCow(rand()%20 - 10, rand()%20 - 10); // TESTE DAS VACAS
 
     }
+
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
     {
         removeCow(rand()%currentCowId); // VAI REMOVER SOMENTE QUANDO O RAND FOR UM ID EXISTENTE
@@ -1242,11 +1299,8 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 
     glm::vec4 newView = (Camera.camera_view + vVec + hVec)/norm(Camera.camera_view + vVec + hVec);
     //evita que o vetor view fique na mesma direção do vetor up
-    glm::vec3 sphericalView = toSpherical(newView.x, newView.y, newView.z);
 
     glm::vec4 oldViewVector = Camera.camera_view;
-    float phimin = 1.8f;
-    float phimax = 3.15;
     float y = fabs(newView.y);
 
     float maxy = 0.9f;
@@ -1358,7 +1412,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
                 isMoving = true;
             }
             isWPressed = true;
-            moveForward(movementSpeed);
+            moveForward();
         }
         if(action == GLFW_RELEASE)
         {
@@ -1395,7 +1449,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
                 isMoving = true;
             }
             isSPressed = true;
-            moveBack(movementSpeed);
+            moveBack();
         }
         if(action == GLFW_RELEASE)
         {
@@ -1749,7 +1803,7 @@ glm::vec3 toSpherical(float x, float y, float z)
     return v;
 }
 
-void moveForward(float d)
+void moveForward()
 {
 
     float x = Camera.camera_position.x;
@@ -1758,15 +1812,15 @@ void moveForward(float d)
 
 
     float viewVectorNorm = norm(Camera.camera_view);
-    float nx = x + d * Camera.camera_view.x/viewVectorNorm;
+    float nx = x + movementSpeed * ellapsed_time * Camera.camera_view.x/viewVectorNorm;
     float ny = y; // não altera a altura da câmera
-    float nz = z + d * Camera.camera_view.z/viewVectorNorm;
+    float nz = z + movementSpeed * ellapsed_time * Camera.camera_view.z/viewVectorNorm;
 
     setCameraPosition(nx, ny, nz);
 }
 //função muito semelhante a função moveForward, separada para melhor legibilidade
 //no chamamento da função
-void moveBack(float d)
+void moveBack()
 {
     float x = Camera.camera_position.x;
     float y = Camera.camera_position.y;
@@ -1774,9 +1828,9 @@ void moveBack(float d)
 
 
     float viewVectorNorm = norm(Camera.camera_view);
-    float nx = x - d * Camera.camera_view.x/viewVectorNorm;
+    float nx = x - movementSpeed * ellapsed_time * Camera.camera_view.x/viewVectorNorm;
     float ny = y; // não altera a altura da câmera
-    float nz = z - d * Camera.camera_view.z/viewVectorNorm;
+    float nz = z - movementSpeed * ellapsed_time * Camera.camera_view.z/viewVectorNorm;
     setCameraPosition(nx, ny, nz);
 }
 void moveLeft()
@@ -1791,9 +1845,9 @@ void moveLeft()
     glm::vec4 camera_u = -crossproduct(Camera.camera_up, -(Camera.camera_view)/*w*/);
     float uVectorNorm = norm(camera_u);
 
-    float nx = x + movementSpeed * camera_u.x/uVectorNorm;
+    float nx = x + ellapsed_time * movementSpeed * camera_u.x/uVectorNorm;
     float ny = y; // não altera a altura da câmera
-    float nz = z + movementSpeed * camera_u.z/uVectorNorm;
+    float nz = z + ellapsed_time * movementSpeed * camera_u.z/uVectorNorm;
     setCameraPosition(nx, ny, nz);
 }
 void moveRight()
@@ -1809,9 +1863,9 @@ void moveRight()
     glm::vec4 camera_u = crossproduct(Camera.camera_up, -(Camera.camera_view)/*w*/);
     float uVectorNorm = norm(camera_u);
 
-    float nx = x + movementSpeed * camera_u.x/uVectorNorm;
+    float nx = x + movementSpeed * camera_u.x/uVectorNorm * ellapsed_time;
     float ny = y; // não altera a altura da câmera
-    float nz = z + movementSpeed * camera_u.z/uVectorNorm;
+    float nz = z + movementSpeed * camera_u.z/uVectorNorm * ellapsed_time;
     setCameraPosition(nx, ny, nz);
 }
 
@@ -1819,9 +1873,9 @@ void moveRight()
 void handleMovement()
 {
     if(isWPressed)
-        moveForward(movementSpeed);
+        moveForward();
     if(isSPressed)
-        moveBack(movementSpeed);
+        moveBack();
     if(isAPressed)
        moveLeft();
     if(isDPressed)
@@ -1858,7 +1912,7 @@ int createCow(double xpos, double zpos)
         }
         prevCows->next = newNode;
     }
-
+    currentLivingCows++;
 
     return calf->id;
 }
@@ -1895,18 +1949,33 @@ void removeCow(int id)
     }
 }
 
-void updateCows(double ellapsed_time)
+void updateCows()
 {
     CowList* tempCows = cows;
     while(tempCows!= NULL)
     {
+
+
+
         Cow* currentCow = tempCows->currentCow;
+        glm::vec2 desloc = glm::vec2(Camera.camera_position.x - currentCow->xpos, Camera.camera_position.z - currentCow->zpos);
+        desloc = desloc / length(desloc);
+
+        currentCow->xpos += (desloc.x * cowSpeed * ellapsed_time);
+        currentCow->zpos += (desloc.y * cowSpeed * ellapsed_time);
+        double distanceToCamera = sqrt(pow(currentCow->xpos - Camera.camera_position.x, 2) + pow(currentCow->zpos - Camera.camera_position.z, 2));
+        if (distanceToCamera < minDistanceToCow){
+            removeCow(currentCow->id);
+        }
         double angle;
         if (currentCow->angularMovementDirection == UP){
             angle = currentCow->angle + cowAngularSpeed * ellapsed_time;
             if(angle > MAX_ANGLE){
                 currentCow->angularMovementDirection = DOWN;
             }
+
+
+
         }
         else{
             angle = currentCow->angle - cowAngularSpeed * ellapsed_time;
@@ -1914,6 +1983,8 @@ void updateCows(double ellapsed_time)
                 currentCow->angularMovementDirection = UP;
             }
         }
+
+
         //as duas condições abaixo servem para evitar que o angulo se altere muito quando a
         //renderização está pausada por movimento da janela
         if(angle > 1.2 * MAX_ANGLE){
@@ -1957,6 +2028,118 @@ double cowAngleToCamera(double xpos, double zpos)
         angle = M_PI * 2 - angle;
     }
     return angle;
+}
+
+int createBullet()
+{
+    Bullet* newBullet = (Bullet*) malloc(sizeof(Bullet));
+    newBullet->id = currentBulletId;
+    newBullet->pos = Camera.camera_position;
+    newBullet->direction = Camera.camera_view;
+    currentBulletId++;
+
+    BulletList* newNode = (BulletList*) malloc(sizeof(BulletList));
+    newNode->currentBullet = newBullet;
+    newNode->next = NULL;
+
+    BulletList* tempBullet = bullets;
+    BulletList* prevBullet = NULL;
+    if(tempBullet == NULL){
+        bullets = newNode;
+    }
+    else{
+        while(tempBullet!= NULL)
+        {
+            prevBullet = tempBullet;
+            tempBullet = tempBullet->next;
+        }
+        prevBullet->next = newNode;
+    }
+
+
+    return newBullet->id;
+}
+void removeBullet(int id)
+{
+    BulletList* tempBullet = bullets;
+    BulletList* prevBullet = NULL;
+
+    bool found = false;
+    while(tempBullet!= NULL && !found){
+        if(tempBullet->currentBullet->id == id){
+            found = true;
+
+        }
+        else{
+            prevBullet = tempBullet;
+            tempBullet = tempBullet->next;
+        }
+    }
+    if(tempBullet == NULL)
+    {
+        //não encontrou o id, logo faz nada
+
+    }
+    else if(found){
+        if(prevBullet == NULL) // primeiro da lista
+        {
+            bullets = tempBullet->next;
+        }
+        else{
+            prevBullet->next = tempBullet->next;
+            free(tempBullet);
+        }
+    }
+}
+void updateBullet()
+{
+    BulletList* tempBullet = bullets;
+    while(tempBullet!= NULL)
+    {
+        Bullet* currentBullet = tempBullet->currentBullet;
+        glm::vec4 prevPos = currentBullet->pos;
+        glm::vec4 deslocVec = glm::vec4(currentBullet->direction.x * BULLET_SPEED, currentBullet->direction.y * BULLET_SPEED, currentBullet->direction.z * BULLET_SPEED, 0.0f);
+        currentBullet->pos += deslocVec;
+        checkCollisionWithCows(prevPos, currentBullet->pos);
+        if(norm(currentBullet->pos) > MAX_DISTANCE_TO_BULLET)
+        {
+            removeBullet(currentBullet->id);
+        }
+        tempBullet = tempBullet->next;
+
+    }
+}
+
+//checa se o segmento de reta entre a posição antiga e a nova da bala colidem com alguma vaca, se sim
+//remove ambos
+void checkCollisionWithCows(glm::vec4 prevPos, glm::vec4 currentPos){
+
+}
+
+void updateRecoil()
+{
+    if (recoilDirection == UP){
+        currentRecoilAngle+=recoilSpeed*ellapsed_time;
+        if(currentRecoilAngle > GUN_RECOIL_ANGLE)
+            recoilDirection = DOWN;
+    }
+    else if (recoilDirection == DOWN)
+    {
+        currentRecoilAngle-=recoilSpeed*ellapsed_time;
+        if(currentRecoilAngle < 0){
+            recoilDirection = UP;
+            onRecoil = false;
+            currentRecoilAngle = 0.0f;
+        }
+    }
+
+}
+void shoot()
+{
+    createBullet();
+    onRecoil = true;
+    currentShotDelay = shotDelay;
+
 }
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :
