@@ -52,7 +52,7 @@
 #define MAX_ANGLE 0.13089966389//7.5°
 #define MIN_ANGLE -0.26179938779 // -15°
 
-#define GUN_RECOIL_ANGLE 0.01745329251//1º
+#define GUN_RECOIL_ANGLE 2 * 0.01745329251//1º
 #define BULLET_SPEED 100
 #define MAX_DISTANCE_TO_BULLET 100
 
@@ -277,10 +277,10 @@ struct bulletList{
 //velocidade de rotação da vaca andando
 float cowAngularSpeed = M_PI /2.0; // 90° per second
 float balanceSpeed = 7*M_PI;
-float recoilSpeed = M_PI;
+float recoilSpeed = M_PI/2;
 float currentRecoilAngle = 0.0f;
 int recoilDirection = UP;
-float shotDelay = 0.2f; // em s
+float shotDelay = 0.1f; // em s
 float currentShotDelay = 0.0f;
 bool onRecoil = false;
 
@@ -1945,7 +1945,9 @@ void removeCow(int id)
         else{
             prevCows->next = tempCows->next;
             free(tempCows);
+
         }
+        currentLivingCows--;
     }
 }
 
