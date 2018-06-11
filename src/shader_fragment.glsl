@@ -24,6 +24,7 @@ uniform mat4 projection;
 #define PLANE  2
 #define M4A1 3
 #define CHAIR 4
+#define BULLET 5
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -161,6 +162,12 @@ void main()
         Ks = vec3(0.0, 0.0, 0.0);
         q = 0.0;
         fixColorObject = true;
+    }
+    else if(object_id == BULLET){
+        Kd = vec3(0.7, 0.4, 0.1);
+        Ka = vec3(0.2, 0.2, 0.2);
+        Ks = vec3(0.1, 0.1, 0.1);
+        q = 128.0;
     }
     else{ // objeto desconhecido
         Kd = vec3(0.0, 0.0, 0.0);

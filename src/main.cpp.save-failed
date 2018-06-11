@@ -53,7 +53,7 @@
 #define MIN_ANGLE -0.26179938779 // -15°
 
 #define GUN_RECOIL_ANGLE 2 * 0.01745329251//1º
-#define BULLET_SPEED 100
+#define BULLET_SPEED 2
 #define MAX_DISTANCE_TO_BULLET 100
 
 #define MAX_NUM_OF_COWS 20
@@ -155,7 +155,7 @@ int createCow(double xpos, double zpos);
 void removeCow(int id);
 void updateCows();
 void drawCows();
-
+double cowAngleToCamera(double xpos, double zpos);
 
 int createBullet();
 void removeBullet(int id);
@@ -275,12 +275,6 @@ struct bulletList{
         BulletList* next;
 };
 
-
-//verifica se um segmento de reta de prevPos até currentPos se choca com a bounding box da vaca
-bool boundingBoxCollided(Cow* cow, glm::vec4 pos);
-//verifica se um segmento de reta de prevPos até currentPos se choca com a vaca verificando de forma mais precisa que com a bounding box
-bool fineCollision(Cow* cow, glm::vec4 pos);
-double cowAngleToCamera(double xpos, double zpos);
 
 //velocidade de rotação da vaca andando
 float cowAngularSpeed = M_PI /2.0; // 90° per second
@@ -572,7 +566,7 @@ int main(int argc, char* argv[])
         updateCows();
         drawCows();
         updateBullet();
-        drawBullet();
+        updateCows();
 
         glm::mat4 model =
                   Matrix_Translate(Camera.camera_position.x, Camera.camera_position.y, Camera.camera_position.z)
@@ -1232,6 +1226,10 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 
     }
 
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    {
+        removeCow(rand()%currentCowId); // VAI REMOVER SOMENTE QUANDO O RAND FOR UM ID EXISTENTE
+    }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
     {
         // Quando o usuário soltar o botão esquerdo do mouse, atualizamos a
@@ -1819,20 +1817,13 @@ void moveForward()
     float y = Camera.camera_position.y;
     float z = Camera.camera_position.z;
 
+
     float viewVectorNorm = norm(Camera.camera_view);
     float nx = x + movementSpeed * ellapsed_time * Camera.camera_view.x/viewVectorNorm;
     float ny = y; // não altera a altura da câmera
     float nz = z + movementSpeed * ellapsed_time * Camera.camera_view.z/viewVectorNorm;
 
-    //cada repeticao do mapa tem tamanho 1, se subtrai 0.5 para não ficar com impressao de que metade do jogador está para fora
-    if(fabs(nx) >= MAP_X_REPEAT - 0.5){
-        nx = x;
-    }
-    if(fabs(nz) >= MAP_Z_REPEAT - 0.5){
-        nz = z;
-    }
     setCameraPosition(nx, ny, nz);
-
 }
 //função muito semelhante a função moveForward, separada para melhor legibilidade
 //no chamamento da função
@@ -1847,13 +1838,6 @@ void moveBack()
     float nx = x - movementSpeed * ellapsed_time * Camera.camera_view.x/viewVectorNorm;
     float ny = y; // não altera a altura da câmera
     float nz = z - movementSpeed * ellapsed_time * Camera.camera_view.z/viewVectorNorm;
-    //cada repeticao do mapa tem tamanho 1, se subtrai 0.5 para não ficar com impressao de que metade do jogador está para fora
-    if(fabs(nx) >= MAP_X_REPEAT - 0.5){
-        nx = x;
-    }
-    if(fabs(nz) >= MAP_Z_REPEAT - 0.5){
-        nz = z;
-    }
     setCameraPosition(nx, ny, nz);
 }
 void moveLeft()
@@ -1871,13 +1855,6 @@ void moveLeft()
     float nx = x + ellapsed_time * movementSpeed * camera_u.x/uVectorNorm;
     float ny = y; // não altera a altura da câmera
     float nz = z + ellapsed_time * movementSpeed * camera_u.z/uVectorNorm;
-    //cada repeticao do mapa tem tamanho 1, se subtrai 0.5 para não ficar com impressao de que metade do jogador está para fora
-    if(fabs(nx) >= MAP_X_REPEAT - 0.5){
-        nx = x;
-    }
-    if(fabs(nz) >= MAP_Z_REPEAT - 0.5){
-        nz = z;
-    }
     setCameraPosition(nx, ny, nz);
 }
 void moveRight()
@@ -1896,13 +1873,6 @@ void moveRight()
     float nx = x + movementSpeed * camera_u.x/uVectorNorm * ellapsed_time;
     float ny = y; // não altera a altura da câmera
     float nz = z + movementSpeed * camera_u.z/uVectorNorm * ellapsed_time;
-    //cada repeticao do mapa tem tamanho 1, se subtrai 0.5 para não ficar com impressao de que metade do jogador está para fora
-    if(fabs(nx) >= MAP_X_REPEAT - 0.5){
-        nx = x;
-    }
-    if(fabs(nz) >= MAP_Z_REPEAT - 0.5){
-        nz = z;
-    }
     setCameraPosition(nx, ny, nz);
 }
 
@@ -2095,6 +2065,9 @@ int createBullet()
         prevBullet->next = newNode;
     }
 
+    printf("Added bullet\n");
+
+
     return newBullet->id;
 }
 void removeBullet(int id)
@@ -2136,7 +2109,7 @@ void updateBullet()
     {
         Bullet* currentBullet = tempBullet->currentBullet;
         glm::vec4 prevPos = currentBullet->pos;
-        glm::vec4 deslocVec = glm::vec4(currentBullet->direction.x * BULLET_SPEED * ellapsed_time, currentBullet->direction.y * BULLET_SPEED * ellapsed_time, currentBullet->direction.z * BULLET_SPEED * ellapsed_time, 0.0f);
+        glm::vec4 deslocVec = glm::vec4(currentBullet->direction.x * BULLET_SPEED, currentBullet->direction.y * BULLET_SPEED, currentBullet->direction.z * BULLET_SPEED, 0.0f);
         currentBullet->pos += deslocVec;
         checkCollisionWithCows(prevPos, currentBullet->pos);
         if(norm(currentBullet->pos) > MAX_DISTANCE_TO_BULLET)
@@ -2149,14 +2122,17 @@ void updateBullet()
 
 void drawBullet()
 {
+    printf("draw bullet function\n");
     BulletList* tempBullets = bullets;
     while (tempBullets!= NULL)
     {
-        Bullet* bullet = tempBullets->currentBullet;
-
-        glm::mat4 model = Matrix_Translate(bullet->pos.x, bullet->pos.y, bullet->pos.z)
-                        * Matrix_Scale(0.1, 0.1, 0.1)
-                        * Matrix_Identity();
+        printf("Draw bullet\n");
+        double yRotationAngle = 0.0;//angulo de rotação horizontal
+        double zRotationAngle = 0.0;
+        glm::mat4 model = Matrix_Translate(tempBullets->currentBullet->pos.x, tempBullets->currentBullet->pos.y, tempBullets->currentBullet->pos.z)
+                        * Matrix_Identity()
+                        * Matrix_Rotate_Y(yRotationAngle)
+                        * Matrix_Rotate_Z(zRotationAngle);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, BULLET);
         DrawVirtualObject("bullet");
@@ -2168,19 +2144,7 @@ void drawBullet()
 //checa se o segmento de reta entre a posição antiga e a nova da bala colidem com alguma vaca, se sim
 //remove ambos
 void checkCollisionWithCows(glm::vec4 prevPos, glm::vec4 currentPos){
-    CowList* tempCows = cows;
-    while(tempCows!=NULL)
-    {
-        BulletList* tempBullets = bullets;
-        while(tempBullets!=NULL){
-            if (boundingBoxCollided(tempCows->currentCow, tempBullets->currentBullet->pos)){
-                removeCow(tempCows->currentCow->id);
-                removeBullet(tempBullets->currentBullet->id);
-            }
-            tempBullets = tempBullets->next;
-        }
-        tempCows = tempCows->next;
-    }
+
 }
 
 void updateRecoil()
@@ -2207,46 +2171,6 @@ void shoot()
     onRecoil = true;
     currentShotDelay = shotDelay;
 
-}
-
-//verifica se um ponto esta dentro da bounding box da vaca, tem menor custo computacional que uma verificação mais fina
-
-bool boundingBoxCollided(Cow* cow, glm::vec4 pos)
-{
-
-    glm::vec4 upRightBackPnt = glm::vec4(cow->xpos + 1.0, 1.0, cow->zpos + 1.0, 1.0);
-    glm::vec4 downLeftFrontPnt = glm::vec4(cow->xpos -1.0, -1.0, cow->zpos -1.0, 1.0);
-
-
-    return(pos.x >= downLeftFrontPnt.x && pos.x <= upRightBackPnt.x &&
-       pos.y >= downLeftFrontPnt.x && pos.y <= upRightBackPnt.y &&
-       pos.z >= downLeftFrontPnt.z && pos.z <= upRightBackPnt.z);
-}
-
-typedef struct cylinder{
-    glm::vec4 centerAxisPnt;
-    glm::vec4 direction;
-    double height;
-    double radius;
-}CYLINDER;
-
-typedef struct sphere{
-    glm::vec4 center;
-    double radius;
-}SPHERE;
-
-bool insideCylinder(CYLINDER* cyl, glm::vec4 pos){
-
-}
-
-bool insideSphere(SPHERE* sph, glm::vec4 pos){
-    return (length(sph->center - pos) <= sph->radius);
-}
-
-//verifica se um ponto esta dentro da vaca verificando de forma mais precisa que com a bounding box
-bool fineCollision(Cow* cow, glm::vec4 pos)
-{
-    return false;
 }
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :
