@@ -53,8 +53,11 @@
 #define MIN_ANGLE -0.26179938779 // -15°
 
 #define GUN_RECOIL_ANGLE 2 * 0.01745329251//1º
-#define BULLET_SPEED 100
+#define BULLET_SPEED 50
 #define MAX_DISTANCE_TO_BULLET 100
+
+#define COW_LIFE 5
+#define PLAYER_LIFE 3
 
 #define MAX_NUM_OF_COWS 20
 
@@ -66,6 +69,7 @@
 #define M4A1 3
 #define CHAIR 4
 #define BULLET 5
+
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
 struct ObjModel
@@ -2214,40 +2218,16 @@ void shoot()
 bool boundingBoxCollided(Cow* cow, glm::vec4 pos)
 {
 
-    glm::vec4 upRightBackPnt = glm::vec4(cow->xpos + 1.0, 1.0, cow->zpos + 1.0, 1.0);
-    glm::vec4 downLeftFrontPnt = glm::vec4(cow->xpos -1.0, -1.0, cow->zpos -1.0, 1.0);
-
+    glm::vec4 upRightBackPnt = glm::vec4(cow->xpos + 0.5, 0.8, cow->zpos + 0.5, 1.0);
+    glm::vec4 downLeftFrontPnt = glm::vec4(cow->xpos -0.5, -0.8, cow->zpos -0.5, 1.0);
 
     return(pos.x >= downLeftFrontPnt.x && pos.x <= upRightBackPnt.x &&
-       pos.y >= downLeftFrontPnt.x && pos.y <= upRightBackPnt.y &&
+       pos.y >= downLeftFrontPnt.y && pos.y <= upRightBackPnt.y &&
        pos.z >= downLeftFrontPnt.z && pos.z <= upRightBackPnt.z);
 }
 
-typedef struct cylinder{
-    glm::vec4 centerAxisPnt;
-    glm::vec4 direction;
-    double height;
-    double radius;
-}CYLINDER;
 
-typedef struct sphere{
-    glm::vec4 center;
-    double radius;
-}SPHERE;
 
-bool insideCylinder(CYLINDER* cyl, glm::vec4 pos){
-
-}
-
-bool insideSphere(SPHERE* sph, glm::vec4 pos){
-    return (length(sph->center - pos) <= sph->radius);
-}
-
-//verifica se um ponto esta dentro da vaca verificando de forma mais precisa que com a bounding box
-bool fineCollision(Cow* cow, glm::vec4 pos)
-{
-    return false;
-}
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
