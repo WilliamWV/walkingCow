@@ -282,9 +282,10 @@ struct bulletList{
 
 //verifica se um segmento de reta de prevPos até currentPos se choca com a bounding box da vaca
 bool boundingBoxCollided(Cow* cow, glm::vec4 pos);
-//verifica se um segmento de reta de prevPos até currentPos se choca com a vaca verificando de forma mais precisa que com a bounding box
-bool fineCollision(Cow* cow, glm::vec4 pos);
-double cowAngleToCamera(double xpos, double zpos);
+//determina se duas vacas colidirão e se sim afasta elas
+void cowsCollided(Cow* cow1, Cow* cow2);
+//itera pelas vacas e verifica se alguma colidiu com a vaca testada
+void checkCowCollision(Cow* cow);double cowAngleToCamera(double xpos, double zpos);
 
 //velocidade de rotação da vaca andando
 float cowAngularSpeed = M_PI /2.0; // 90° per second
@@ -1991,7 +1992,16 @@ void removeCow(int id)
         currentLivingCows--;
     }
 }
-
+void checkCowCollision(Cow* cow){
+    CowList* tempCows = cows;
+    while(tempCows != NULL){
+        Cow* currentCow = tempCows->currentCow;
+        if(currentCow->id != cow->id){
+            cowsCollided(currentCow, cow);
+        }
+        tempCows = tempCows->next;
+    }
+}
 void updateCows()
 {
     CowList* tempCows = cows;
@@ -2038,6 +2048,7 @@ void updateCows()
             angle = MIN_ANGLE;
             currentCow->angularMovementDirection = UP;
         }
+        checkCowCollision(currentCow);
         currentCow->angle = angle;
         tempCows = tempCows->next;
     }
@@ -2226,8 +2237,33 @@ bool boundingBoxCollided(Cow* cow, glm::vec4 pos)
        pos.z >= downLeftFrontPnt.z && pos.z <= upRightBackPnt.z);
 }
 
+void cowsCollided(Cow* cow1, Cow* cow2){
 
+    double repealSpeed = .5;
 
+    glm::vec4 pnt1 = glm::vec4(cow2->xpos + 0.5, 0.8, cow2->zpos + 0.5, 1.0);
+    glm::vec4 pnt2 = glm::vec4(cow2->xpos -0.5, -0.8, cow2->zpos -0.5, 1.0);
+    glm::vec4 pnt3 = glm::vec4(cow2->xpos + 0.5, 0.8, cow2->zpos - 0.5, 1.0);
+    glm::vec4 pnt4 = glm::vec4(cow2->xpos -0.5, -0.8, cow2->zpos +0.5, 1.0);
+
+    if(boundingBoxCollided(cow1, pnt1)){
+        cow2->xpos -= repealSpeed*ellapsed_time;
+        cow2->zpos -= repealSpeed*ellapsed_time;
+    }
+    else if(boundingBoxCollided(cow1, pnt2)){
+        cow2->xpos += repealSpeed*ellapsed_time;
+        cow2->zpos += repealSpeed*ellapsed_time;
+    }
+    else if(boundingBoxCollided(cow1, pnt3)){
+        cow2->xpos -= repealSpeed*ellapsed_time;
+        cow2->zpos += repealSpeed*ellapsed_time;
+    }
+    else if(boundingBoxCollided(cow1, pnt4)){
+        cow2->xpos += repealSpeed*ellapsed_time;
+        cow2->zpos -= repealSpeed*ellapsed_time;
+    }
+
+}
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
