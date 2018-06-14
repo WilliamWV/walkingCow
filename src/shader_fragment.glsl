@@ -25,6 +25,7 @@ uniform mat4 projection;
 #define M4A1 3
 #define CHAIR 4
 #define BULLET 5
+#define WORLDSPHERE 6
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -36,6 +37,7 @@ uniform sampler2D TextureImage0;
 uniform sampler2D TextureImage1;
 uniform sampler2D TextureImage2;
 uniform sampler2D TextureImage3;
+uniform sampler2D TextureImage4;
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec3 color;
 
@@ -168,6 +170,25 @@ void main()
         Ka = vec3(0.2, 0.2, 0.2);
         Ks = vec3(0.1, 0.1, 0.1);
         q = 128.0;
+    }
+    else if(object_id == WORLDSPHERE){
+        vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
+
+        float sphere_radius = sqrt(pow(position_model[0], 2) + pow(position_model[1], 2) + pow(position_model[2], 2));
+        vec4 p_vector = (position_model - bbox_center)/length(position_model - bbox_center);
+        vec4 sphere_p = bbox_center + sphere_radius*p_vector;
+        float theta = atan(sphere_p[0], sphere_p[2]);
+        float phi = asin(sphere_p[1]/sphere_radius);
+
+        U = (theta + M_PI)/(2*M_PI);
+        V = (phi + M_PI_2)/M_PI;
+
+        Kd = texture(TextureImage4, vec2(U,V)).rgb;
+        Ka = vec3(0.0, 0.0, 0.0);
+        Ks = vec3(0.0, 0.0, 0.0);
+        q = 0.0;
+
+        fixColorObject = true;
     }
     else{ // objeto desconhecido
         Kd = vec3(0.0, 0.0, 0.0);

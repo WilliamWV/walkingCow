@@ -59,7 +59,7 @@
 #define COW_LIFE 5
 #define PLAYER_LIFE 3
 
-#define MAX_NUM_OF_COWS 20
+#define MAX_NUM_OF_COWS 4
 
 #define MAP_X_REPEAT 20 // repetições da textura no plano
 #define MAP_Z_REPEAT 20
@@ -69,6 +69,7 @@
 #define M4A1 3
 #define CHAIR 4
 #define BULLET 5
+#define WORLDSPHERE 6
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -159,6 +160,7 @@ int createCow(double xpos, double zpos);
 void removeCow(int id);
 void updateCows();
 void drawCows();
+void drawOutterSphere();
 
 
 int createBullet();
@@ -255,6 +257,8 @@ typedef struct cowStruct{
     double xpos;
     double zpos;
     double angle;
+    int health;
+    bool lookat = false;
     int angularMovementDirection;
 }Cow;
 
@@ -324,6 +328,8 @@ const glm::vec4 cameraUpVec = glm::vec4(0.0f, 1.0f, 0.0f, 0.0);
 float yRotation = 0.0f;
 float xRotation = 0.0f;
 float zRotation = 0.0f;
+
+int score = 0;
 
 int currentCowId = 1;
 int currentBulletId = 1;
@@ -419,6 +425,7 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/grass_texture.jpg");
     LoadTextureImage("../../data/gun_texture.jpg");
     LoadTextureImage("../../data/yellowTexture.jpg");
+    LoadTextureImage("../../data/landscape_texture.png");
 
 
     ObjModel cowmodel("../../data/cow.obj");
@@ -454,9 +461,9 @@ int main(int argc, char* argv[])
     glEnable(GL_DEPTH_TEST);
 
     // Habilitamos o Backface Culling. Veja slides 22 à 34 do documento "Aula_13_Clipping_and_Culling.pdf".
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
+    //glEnable(GL_CULL_FACE);
+    //glCullFace(GL_BACK);
+    //glFrontFace(GL_CCW);
 
     // Variáveis auxiliares utilizadas para chamada à função
     // TextRendering_ShowModelViewProjection(), armazenando matrizes 4x4.
@@ -514,7 +521,7 @@ int main(int argc, char* argv[])
         // estão no sentido negativo! Veja slides 191-194 do documento
         // "Aula_09_Projecoes.pdf".
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -40.0f; // Posição do "far plane"
+        float farplane  = -60.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -578,6 +585,7 @@ int main(int argc, char* argv[])
         drawCows();
         updateBullet();
         drawBullet();
+        drawOutterSphere();
 
         glm::mat4 model =
                   Matrix_Translate(Camera.camera_position.x, Camera.camera_position.y, Camera.camera_position.z)
@@ -650,10 +658,10 @@ int main(int argc, char* argv[])
 
         // Imprimimos na tela os ângulos de Euler que controlam a rotação do
         // terceiro cubo.
-        TextRendering_ShowEulerAngles(window);
+        //TextRendering_ShowEulerAngles(window);
 
         // Imprimimos na informação sobre a matriz de projeção sendo utilizada.
-        TextRendering_ShowProjection(window);
+        //TextRendering_ShowProjection(window);
 
         // Imprimimos na tela informação sobre o número de quadros renderizados
         // por segundo (frames per second).
@@ -819,6 +827,7 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage3"), 3);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage4"), 4);
     glUseProgram(0);
 }
 
@@ -1589,6 +1598,8 @@ void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
     static int   ellapsed_frames = 0;
     static char  buffer[20] = "?? fps";
     static int   numchars = 7;
+    char scoreText[50] = "Score: 0";
+
 
     ellapsed_frames += 1;
 
@@ -1610,6 +1621,11 @@ void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
     float charwidth = TextRendering_CharWidth(window);
 
     TextRendering_PrintString(window, buffer, 1.0f-(numchars + 1)*charwidth, 1.0f-lineheight, 1.0f);
+    //printf("charwidth: %d\n", charwidth);
+    //printf("lineheight: %d\n", lineheight);
+    numchars = snprintf(scoreText, 50, "Score: %d", score);
+    TextRendering_PrintString(window, scoreText, -1.0f+lineheight/10, 1.0f-lineheight, 1.0f);
+    //TextRendering_PrintString(window, scoreText, 1.0f-(numchars + 1)*charwidth, 1.0f-lineheight, 1.0f);
 }
 
 // Função para debugging: imprime no terminal todas informações de um modelo
@@ -1934,6 +1950,7 @@ int createCow(double xpos, double zpos)
     calf->zpos = zpos;
     calf->angle = 0;
     calf->angularMovementDirection = UP;
+    calf->health = COW_LIFE;
 
     currentCowId++;
 
@@ -2180,6 +2197,15 @@ void drawBullet()
     }
 }
 
+void drawOutterSphere(){
+    //glCullFace(GL_BACK);
+    glm::mat4 model =     Matrix_Scale(30, 30, 30)
+                        * Matrix_Identity();
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, WORLDSPHERE);
+        DrawVirtualObject("bullet");
+}
+
 //checa se o segmento de reta entre a posição antiga e a nova da bala colidem com alguma vaca, se sim
 //remove ambos
 void checkCollisionWithCows(glm::vec4 prevPos, glm::vec4 currentPos){
@@ -2189,7 +2215,12 @@ void checkCollisionWithCows(glm::vec4 prevPos, glm::vec4 currentPos){
         BulletList* tempBullets = bullets;
         while(tempBullets!=NULL){
             if (boundingBoxCollided(tempCows->currentCow, tempBullets->currentBullet->pos)){
-                removeCow(tempCows->currentCow->id);
+                tempCows->currentCow->health--;
+                //printf("vida: %d\n", tempCows->currentCow->health);
+                if(tempCows->currentCow->health == 0){
+                    removeCow(tempCows->currentCow->id);
+                    score = score + 25;
+                }
                 removeBullet(tempBullets->currentBullet->id);
             }
             tempBullets = tempBullets->next;
