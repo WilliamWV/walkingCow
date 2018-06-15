@@ -247,7 +247,7 @@ GLint bbox_max_uniform;
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
-struct FreeCamera{
+struct Cam{
     glm::vec4 camera_position;
     glm::vec4 camera_view;
     glm::vec4 camera_up;
@@ -304,6 +304,8 @@ int recoilDirection = UP;
 float shotDelay = 0.1f; // em s
 float currentShotDelay = 0.0f;
 bool onRecoil = false;
+bool goingRight = false; // usado para rotacionar a arma e mira na camera lookat
+bool justChanged = false; //usado para evitar que o view rotacione em excesso quando a camera muda
 
 float cowGenerationDelay = 1.0f; //s
 float currentCowDelay = 0.0f;
@@ -345,7 +347,7 @@ CowList* cows = NULL;
 BulletList* bullets = NULL;
 
 
-FreeCamera Camera;
+Cam Camera;
 
 int debug = true;
 
@@ -600,11 +602,7 @@ int main(int argc, char* argv[])
                   * Matrix_Rotate_Y(3.92 + yRotation)  //depois a rotacionamos horizontalmente
                   * Matrix_Rotate_X(-Camera.camera_view.y - currentRecoilAngle)
                   * Matrix_Scale(0.05f, 0.05f, 0.05f); //primeiro escalamos a arma
-        //printf("x: %f\ty: %f\tz: %f\n", xRotation, yRotation, zRotation);
-        //printf("V : %f\t%f\t%f\n", HorizCrossProduct.x, HorizCrossProduct.y, HorizCrossProduct.z);
-        //printf("cameraphi : %f\n", g_CameraPhi);
-        //model = model * Matrix_Rotate_X(1+ g_CameraPhi, Horiz);
-        //printf("%f\n", Camera.camera_view.y);
+
         model = model * Matrix_Translate(-10.0f, -18.0f, -4.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, M4A1);
@@ -1275,6 +1273,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
                 Camera.lookatID = closestCow->id;
                 Camera.lookAtPoint = glm::vec4(closestCow->xpos, 0.0f, closestCow->zpos, 1.0f);
                 Camera.camera_view = (Camera.lookAtPoint - Camera.camera_position)/norm(Camera.lookAtPoint - Camera.camera_position);
+                justChanged = true;
             }
         }
         testIntersection=false;
@@ -1304,6 +1303,63 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // variável abaixo para false.
         g_MiddleMouseButtonPressed = false;
     }
+}
+
+void updateAngles(glm::vec4 oldViewVector, glm::vec4 newViewVector, int hDesloc)
+{
+    float tempNewY = newViewVector.y;
+    float tempOldY = oldViewVector.y;
+
+    oldViewVector.y = 0.0f;
+    newViewVector.y = 0.0f;
+    float angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
+    if(angleWeapon>=1 || angleWeapon<=-1)  //necessário para acos() não retornar nan
+        angleWeapon = 0;
+    else
+        angleWeapon = acos(angleWeapon);
+    if(hDesloc<0)
+    {
+        yRotation = yRotation + angleWeapon;
+    }
+    else
+        yRotation = yRotation - angleWeapon;
+    oldViewVector.y = tempOldY;
+    newViewVector.y = tempNewY;
+    //projeta no plano yz (vertical)
+    tempNewY = newViewVector.x;
+    tempOldY = oldViewVector.x;
+    oldViewVector.x = 0.0f;
+    newViewVector.x = 0.0f;
+    angleWeapon = dotproduct(baseWeaponVector, newViewVector)/(length(newViewVector) * length(baseWeaponVector));
+    if(angleWeapon>=1 || angleWeapon<=-1) //necessário para acos() não retornar nan
+        angleWeapon = 0;
+    else
+        angleWeapon = acos(angleWeapon);
+
+    float minX = -1.12;
+    float maxX = 1.12;
+    if(newViewVector.y<0)
+    {
+        xRotation = angleWeapon;
+    }
+    else
+        xRotation = -angleWeapon;
+
+    if(xRotation > M_PI/2){
+        xRotation = M_PI - xRotation;
+    }
+    else if(xRotation < - M_PI/2){
+        xRotation = -M_PI - xRotation;
+    }
+
+    if(xRotation > maxX){
+        xRotation = maxX;
+    }
+    else if(xRotation < minX){
+        xRotation = minX;
+    }
+    oldViewVector.x = tempOldY;
+    newViewVector.x = tempNewY;
 }
 
 // Função callback chamada sempre que o usuário movimentar o cursor do mouse em
@@ -1361,73 +1417,8 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 
         glm::vec4 newViewVector = Camera.camera_view;
         //projeta no plano xz (horizontal)
-        float tempNewY = newViewVector.y;
-        float tempOldY = oldViewVector.y;
-        oldViewVector.y = 0.0f;
-        newViewVector.y = 0.0f;
-        float angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
-        if(angleWeapon>=1 || angleWeapon<=-1)  //necessário para acos() não retornar nan
-            angleWeapon = 0;
-        else
-            angleWeapon = acos(angleWeapon);
-        if(dx<0)
-        {
-            yRotation = yRotation + angleWeapon;
-        }
-        else
-            yRotation = yRotation - angleWeapon;
+        updateAngles(oldViewVector, newViewVector, dx);
 
-        oldViewVector.y = tempOldY;
-        newViewVector.y = tempNewY;
-        //projeta no plano yz (vertical)
-        tempNewY = newViewVector.x;
-        tempOldY = oldViewVector.x;
-        oldViewVector.x = 0.0f;
-        newViewVector.x = 0.0f;
-        angleWeapon = dotproduct(baseWeaponVector, newViewVector)/(length(newViewVector) * length(baseWeaponVector));
-        if(angleWeapon>=1 || angleWeapon<=-1) //necessário para acos() não retornar nan
-            angleWeapon = 0;
-        else
-            angleWeapon = acos(angleWeapon);
-
-        float minX = -1.12;
-        float maxX = 1.12;
-        if(newViewVector.y<0)
-        {
-            xRotation = angleWeapon;
-        }
-        else
-            xRotation = -angleWeapon;
-
-        if(xRotation > M_PI/2){
-            xRotation = M_PI - xRotation;
-        }
-        else if(xRotation < - M_PI/2){
-            xRotation = -M_PI - xRotation;
-        }
-
-        if(xRotation > maxX){
-            xRotation = maxX;
-        }
-        else if(xRotation < minX){
-            xRotation = minX;
-        }
-        oldViewVector.x = tempOldY;
-        newViewVector.x = tempNewY;
-
-
-        // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
-
-        /*
-        phimax = 3.141592f/2;
-        phimin = -phimax;
-
-        if (g_CameraPhi > phimax)
-            g_CameraPhi = phimax;
-
-        if (g_CameraPhi < phimin)
-            g_CameraPhi = phimin;
-    */
         // Atualizamos as variáveis globais para armazenar a posição atual do
         // cursor como sendo a última posição conhecida do cursor.
         g_LastCursorPosX = xpos;
@@ -1902,6 +1893,7 @@ void moveBack()
 }
 void moveLeft()
 {
+    goingRight = false;
     float x = Camera.camera_position.x;
     float y = Camera.camera_position.y;
     float z = Camera.camera_position.z;
@@ -1926,7 +1918,7 @@ void moveLeft()
 }
 void moveRight()
 {
-
+    goingRight = true;
     float x = Camera.camera_position.x;
     float y = Camera.camera_position.y;
     float z = Camera.camera_position.z;
@@ -2061,8 +2053,18 @@ void updateCows()
         currentCow->zpos += (desloc.y * cowSpeed * ellapsed_time);
         if(currentCow->lookat == true){
             Camera.lookAtPoint = glm::vec4(currentCow->xpos, 0.0f, currentCow->zpos, 1.0f);
+            glm::vec4 prevView = Camera.camera_view;
             Camera.camera_view = (Camera.lookAtPoint - Camera.camera_position)/norm(Camera.lookAtPoint - Camera.camera_position);
-
+            int right = 1;
+            if (goingRight){
+                right = -1;
+            }
+            if(!justChanged)
+                updateAngles(prevView, Camera.camera_view, right);
+            else
+            {
+                justChanged = false;
+            }
         }
         double distanceToCamera = sqrt(pow(currentCow->xpos - Camera.camera_position.x, 2) + pow(currentCow->zpos - Camera.camera_position.z, 2));
         if (distanceToCamera < minDistanceToCow){
@@ -2310,6 +2312,53 @@ glm::vec4 infiniteLinePlaneCollision(glm::vec4 lineVec, glm::vec4 lineP, glm::ve
 
 }
 
+
+
+//Retorna a distância para um plano que intersecciona uma linha definida pelo vetor view da camera
+//retorna FLT_MAX se não intersecciona
+float intersectedCowBBPlaneDist(Cow* cow, glm::vec4 LineDirection, glm::vec4 LinePoint, glm::vec4 P0, glm::vec4 P1, glm::vec4 P2)
+{
+    glm::vec4 intersectionInfPlane = infiniteLinePlaneCollision(LineDirection, LinePoint, P0, P1, P2);
+    if (
+        intersectionInfPlane.x <= cow->xpos + 0.5 && intersectionInfPlane.x >= cow->xpos - 0.5 &&
+        intersectionInfPlane.y <= 0.8             && intersectionInfPlane.y >=  - 0.8          &&
+        intersectionInfPlane.z <= cow->zpos + 0.5 && intersectionInfPlane.z >= cow->zpos - 0.5
+    )
+    {
+        return norm(intersectionInfPlane - Camera.camera_position);
+    }
+    else return FLT_MAX;
+
+}
+
+float minFl(float a, float b)
+{
+    return a > b ? b : a;
+
+}
+//retorna a menor distância a vaca, ou FLT_MAX se não intersecta
+float viewIntersectedCow(Cow* cow){
+    glm::vec4 Pdlf = glm::vec4(cow->xpos -0.5, -0.8, cow->zpos -0.5, 1.0);
+    glm::vec4 Pdlb = glm::vec4(cow->xpos -0.5, -0.8, cow->zpos +0.5, 1.0);
+    glm::vec4 Pdrf = glm::vec4(cow->xpos +0.5, -0.8, cow->zpos -0.5, 1.0);
+    glm::vec4 Pdrb = glm::vec4(cow->xpos +0.5, -0.8, cow->zpos +0.5, 1.0);
+    glm::vec4 Pulf = glm::vec4(cow->xpos -0.5, +0.8, cow->zpos -0.5, 1.0);
+    glm::vec4 Pulb = glm::vec4(cow->xpos -0.5, +0.8, cow->zpos +0.5, 1.0);
+    glm::vec4 Purf = glm::vec4(cow->xpos +0.5, +0.8, cow->zpos -0.5, 1.0);
+    glm::vec4 Purb = glm::vec4(cow->xpos +0.5, +0.8, cow->zpos +0.5, 1.0);
+
+    float PL = intersectedCowBBPlaneDist(cow, Camera.camera_view, Camera.camera_position, Pdlf, Pdlb, Pulb); // Plano Left
+    float PU = intersectedCowBBPlaneDist(cow, Camera.camera_view, Camera.camera_position, Pulf, Pulb, Purb); // Plano Up
+    float PR = intersectedCowBBPlaneDist(cow, Camera.camera_view, Camera.camera_position, Purf, Purb, Pdrb); // Plano Right
+    float PD = intersectedCowBBPlaneDist(cow, Camera.camera_view, Camera.camera_position, Pdrf, Pdrb, Pdlb); // Plano Down
+    float PB = intersectedCowBBPlaneDist(cow, Camera.camera_view, Camera.camera_position, Pdlb, Pdrb, Purb); // Plano Back
+    float PF = intersectedCowBBPlaneDist(cow, Camera.camera_view, Camera.camera_position, Pdrf, Pdlf, Pulf); // Plano Front
+
+    return minFl(minFl(minFl(PL, PU), minFl(PR, PD)), minFl(PB, PF));
+
+
+}
+
 Cow* getClosestCow(){
     CowList* tempCows = cows;
     Cow *closestCow = NULL;
@@ -2318,56 +2367,13 @@ Cow* getClosestCow(){
     glm::vec4 intersecP2;
     while(tempCows != NULL){
         Cow* cow = tempCows->currentCow;
-        glm::vec4 downLeftFrontPnt = glm::vec4(cow->xpos -0.5, -0.8, cow->zpos -0.5, 1.0);
+        float distance = viewIntersectedCow(cow);
+        if(distance < closestPoint){
+            closestPoint = distance;
+            closestCow = cow;
+        }
 
-        //plano frontal: pf1 inferior à direita, pf2 superior à direita
-        glm::vec4 pf1 = glm::vec4(cow->xpos +0.5, -0.8, cow->zpos -0.5, 1.0);
-        glm::vec4 pf2 = glm::vec4(cow->xpos +0.5, 0.8, cow->zpos -0.5, 1.0);
-        intersecP = infiniteLinePlaneCollision(Camera.camera_view, Camera.camera_position, downLeftFrontPnt, pf1, pf2);
-        if(intersecP.x <= cow->xpos +0.5 && intersecP.x >= cow->xpos -0.5)
-            if(intersecP.y <= 0.8 && intersecP.y >= -0.8)
-                if(intersecP.z<=cow->zpos +0.5 && intersecP.z>=cow->zpos -0.5)
-                {
-                    //printf("plano front: x-:%f x+:%f y-:-0.8 y+: 0.8 z-:%f z+:%f", cow->xpos -0.5, cow->xpos +0.5, cow->zpos -0.5, cow->zpos +0.5);
-                    //printf("\nx: %f y: %f z: %f\n", intersecP.x, intersecP.y, intersecP.z);
-                    //if(fabs(intersecP.z - (cow->zpos -0.5)) <= 0.00001 ) // precisamos de um delta, aparentemente as operações para achar o ponto no plano geram um ponto no eixo z que não está exatamente no eixo z do plano frontal da vaca
-                    if(norm(intersecP-Camera.camera_view)<closestPoint){
-                        closestPoint = norm(intersecP-Camera.camera_view);
-                        closestCow = tempCows->currentCow;
-                    }
-                }
 
-        //plano superior: pf7 frente à direita, pf8 fundo à direita
-        glm::vec4 pf7 = glm::vec4(cow->xpos +0.5, 0.8, cow->zpos -0.5, 1.0);
-        glm::vec4 pf8 = glm::vec4(cow->xpos +0.5, 0.8, cow->zpos +0.5, 1.0);
-        glm::vec4 upLeftFrontPnt = glm::vec4(cow->xpos -0.5, 0.8, cow->zpos -0.5, 1.0);
-        intersecP2 = infiniteLinePlaneCollision(Camera.camera_view, Camera.camera_position, upLeftFrontPnt, pf7, pf8);
-        if(intersecP2.x <= cow->xpos +0.5 && intersecP2.x >= cow->xpos -0.5)
-            if(intersecP2.y <= 0.8 &&  intersecP2.y >= -0.8)
-                 if(intersecP2.z <= cow->zpos +0.5 && intersecP2.z >= cow->zpos -0.5)
-                 {
-                    //printf("plano sup: x-:%f x+:%f y:-0.8 y+: 0.8 z-:%f z+:%f", cow->xpos -0.5, cow->xpos +0.5, cow->zpos -0.5, cow->zpos +0.5);
-                    //printf("\n\nx: %f y: %f z: %f\n", intersecP2.x, intersecP2.y, intersecP2.z);
-                    if(norm(intersecP2-Camera.camera_view)<closestPoint){
-                        //printf("selecionou vaca pelo plano superior\n\n");
-                        closestPoint = norm(intersecP2-Camera.camera_view);
-                        closestCow = tempCows->currentCow;
-                    }
-                 }
-        printf("planos: x-:%f x+:%f y:-0.8 y+: 0.8 z-:%f z+:%f", cow->xpos -0.5, cow->xpos +0.5, cow->zpos -0.5, cow->zpos +0.5);
-        printf("\nsup: x: %f y: %f z: %f\n", intersecP2.x, intersecP2.y, intersecP2.z);
-        printf("front: x: %f y: %f z: %f\n-------\n", intersecP.x, intersecP.y, intersecP.z);
-        /*
-        //plano à esquerda: pf3 inferior pro fundo, pf4 superior pro fundo
-        glm::vec4 pf3 = glm::vec4(cow->xpos -0.5, -0.8, cow->zpos +0.5, 1.0);
-        glm::vec4 pf4 = glm::vec4(cow->xpos -0.5, 0.8, cow->zpos +0.5, 1.0);
-        //infiniteLinePlaneCollision(Camera.camera_view, pointInLine, downLeftFrontPnt, pf3, pf4);
-
-        //plano à direita: pf5 inferior pra frente, pf6 superior pra frente
-        glm::vec4 pf5 = glm::vec4(cow->xpos + 0.5, -0.8, cow->zpos - 0.5, 1.0);
-        glm::vec4 pf6 = glm::vec4(cow->xpos + 0.5, 0.8, cow->zpos - 0.5, 1.0);
-        //infiniteLinePlaneCollision(Camera.camera_view, pointInLine, upRightBackPnt, pf5, pf6);
-        */
 
         tempCows = tempCows->next;
     }

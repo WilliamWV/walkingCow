@@ -1665,7 +1665,7 @@
 	<inttypes.h>
 	<stdint.h>
 
-1528844522 source:c:\users\acew\documents\cic - ufrgs\5° semestre\fundamentos de computação gráfica\the_walking_cow\src\main.cpp
+1529091438 source:c:\users\acew\documents\cic - ufrgs\5° semestre\fundamentos de computação gráfica\the_walking_cow\src\main.cpp
 	<cmath>
 	<cstdio>
 	<cstdlib>
@@ -1679,6 +1679,7 @@
 	<sstream>
 	<stdexcept>
 	<algorithm>
+	<float.h>
 	<glad/glad.h>
 	<GLFW/glfw3.h>
 	<glm/mat4x4.hpp>
@@ -2172,7 +2173,7 @@
 1528744537 source:c:\users\acew\documents\cic - ufrgs\5° semestre\fundamentos de computação gráfica\the_walking_cow\src\stb_image.cpp
 	"stb_image.h"
 
-1528744537 source:c:\users\acew\documents\cic - ufrgs\5° semestre\fundamentos de computação gráfica\the_walking_cow\src\textrendering.cpp
+1529016019 source:c:\users\acew\documents\cic - ufrgs\5° semestre\fundamentos de computação gráfica\the_walking_cow\src\textrendering.cpp
 	<string>
 	<glad/glad.h>
 	<GLFW/glfw3.h>
