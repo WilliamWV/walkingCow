@@ -305,7 +305,6 @@ float shotDelay = 0.1f; // em s
 float currentShotDelay = 0.0f;
 bool onRecoil = false;
 bool goingRight = false; // usado para rotacionar a arma e mira na camera lookat
-bool justChanged = false; //usado para evitar que o view rotacione em excesso quando a camera muda
 
 float cowGenerationDelay = 1.0f; //s
 float currentCowDelay = 0.0f;
@@ -614,8 +613,7 @@ int main(int argc, char* argv[])
         teste += 0.1;
         model = model
                     * Matrix_Translate(viewPoint.x, viewPoint.y, viewPoint.z)
-                    //* Matrix_Translate(Camera.camera_position.x-1.0f, Camera.camera_position.y, Camera.camera_position.z)
-                    * Matrix_Rotate_Y(0.809+yRotation)
+                    * Matrix_Rotate_Y(0.665+yRotation)
                     * Matrix_Rotate_X(Camera.camera_view.y)
                     * Matrix_Scale(0.01f, 0.01f, 0.01f);
         model = model * Matrix_Rotate_X(g_CameraPhi);
@@ -1273,7 +1271,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
                 Camera.lookatID = closestCow->id;
                 Camera.lookAtPoint = glm::vec4(closestCow->xpos, 0.0f, closestCow->zpos, 1.0f);
                 Camera.camera_view = (Camera.lookAtPoint - Camera.camera_position)/norm(Camera.lookAtPoint - Camera.camera_position);
-                justChanged = true;
+
             }
         }
         testIntersection=false;
@@ -1312,17 +1310,24 @@ void updateAngles(glm::vec4 oldViewVector, glm::vec4 newViewVector, int hDesloc)
 
     oldViewVector.y = 0.0f;
     newViewVector.y = 0.0f;
-    float angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
+
+    glm::vec4 baseVec = glm::vec4(1.0, 0.0, 0.0, 0.0);
+
+    float angleWeapon = dotproduct(baseVec, newViewVector)/(length(newViewVector));
     if(angleWeapon>=1 || angleWeapon<=-1)  //necessário para acos() não retornar nan
         angleWeapon = 0;
     else
         angleWeapon = acos(angleWeapon);
-    if(hDesloc<0)
+
+    printf("View = x : %f, y : %f, z : %f\n", newViewVector.x, newViewVector.y, newViewVector.z );
+    if(newViewVector.z < 0)
     {
-        yRotation = yRotation + angleWeapon;
+        yRotation = angleWeapon - 2.25;
     }
     else
-        yRotation = yRotation - angleWeapon;
+    {
+        yRotation = - angleWeapon - 2.25;
+    }
     oldViewVector.y = tempOldY;
     newViewVector.y = tempNewY;
     //projeta no plano yz (vertical)
@@ -2059,12 +2064,7 @@ void updateCows()
             if (goingRight){
                 right = -1;
             }
-            if(!justChanged)
-                updateAngles(prevView, Camera.camera_view, right);
-            else
-            {
-                justChanged = false;
-            }
+            updateAngles(prevView, Camera.camera_view, right);
         }
         double distanceToCamera = sqrt(pow(currentCow->xpos - Camera.camera_position.x, 2) + pow(currentCow->zpos - Camera.camera_position.z, 2));
         if (distanceToCamera < minDistanceToCow){
