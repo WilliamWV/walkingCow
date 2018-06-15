@@ -24,6 +24,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <float.h>
 
 // Headers das bibliotecas OpenGL
 #include <glad/glad.h>   // Criação de contexto OpenGL 3.3
@@ -59,7 +60,7 @@
 #define COW_LIFE 5
 #define PLAYER_LIFE 3
 
-#define MAX_NUM_OF_COWS 4
+#define MAX_NUM_OF_COWS 1
 
 #define MAP_X_REPEAT 20 // repetições da textura no plano
 #define MAP_Z_REPEAT 20
@@ -250,6 +251,8 @@ struct FreeCamera{
     glm::vec4 camera_position;
     glm::vec4 camera_view;
     glm::vec4 camera_up;
+    int lookatID;
+    glm::vec4 lookAtPoint;
 };
 
 typedef struct cowStruct{
@@ -258,7 +261,7 @@ typedef struct cowStruct{
     double zpos;
     double angle;
     int health;
-    bool lookat = false;
+    bool lookat;
     int angularMovementDirection;
 }Cow;
 
@@ -283,7 +286,8 @@ struct bulletList{
         BulletList* next;
 };
 
-
+glm::vec4 infiniteLinePlaneCollision(glm::vec4 lineVec, glm::vec4 lineP, glm::vec4 planeP0, glm::vec4 planeP1, glm::vec4 planeP2);
+Cow* getClosestCow();
 //verifica se um segmento de reta de prevPos até currentPos se choca com a bounding box da vaca
 bool boundingBoxCollided(Cow* cow, glm::vec4 pos);
 //determina se duas vacas colidirão e se sim afasta elas
@@ -345,6 +349,8 @@ FreeCamera Camera;
 
 int debug = true;
 
+bool testIntersection = true;
+
 int main(int argc, char* argv[])
 {
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
@@ -359,6 +365,7 @@ int main(int argc, char* argv[])
     Camera.camera_position = initialCameraPos;
     Camera.camera_view = initialCameraView;
     Camera.camera_up = cameraUpVec;
+    Camera.lookatID = -1;
 
     // Definimos o callback para impressão de erros da GLFW no terminal
     glfwSetErrorCallback(ErrorCallback);
@@ -571,6 +578,7 @@ int main(int argc, char* argv[])
                 shoot();
             }
         }
+
         srand(time(NULL));
         if(currentCowDelay > 0){
             currentCowDelay -= ellapsed_time;
@@ -1240,6 +1248,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // g_LastCursorPosY.  Também, setamos a variável
         // g_LeftMouseButtonPressed como true, para saber que o usuário está
         // com o botão esquerdo pressionado.
+
         glfwGetCursorPos(window, &g_LastCursorPosX, &g_LastCursorPosY);
         g_LeftMouseButtonPressed = true;
         //createCow(rand()%20 - 10, rand()%20 - 10); // TESTE DAS VACAS
@@ -1259,6 +1268,16 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // g_LastCursorPosY.  Também, setamos a variável
         // g_RightMouseButtonPressed como true, para saber que o usuário está
         // com o botão esquerdo pressionado.
+        if(testIntersection==true){
+            Cow *closestCow = getClosestCow();
+            if(closestCow != NULL){
+                closestCow->lookat = true;
+                Camera.lookatID = closestCow->id;
+                Camera.lookAtPoint = glm::vec4(closestCow->xpos, 0.0f, closestCow->zpos, 1.0f);
+                Camera.camera_view = (Camera.lookAtPoint - Camera.camera_position)/norm(Camera.lookAtPoint - Camera.camera_position);
+            }
+        }
+        testIntersection=false;
         glfwGetCursorPos(window, &g_LastCursorPosX, &g_LastCursorPosY);
         g_RightMouseButtonPressed = true;
     }
@@ -1266,6 +1285,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
     {
         // Quando o usuário soltar o botão esquerdo do mouse, atualizamos a
         // variável abaixo para false.
+        testIntersection=true;
         g_RightMouseButtonPressed = false;
     }
     if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
@@ -1290,127 +1310,130 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 // cima da janela OpenGL.
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    // Abaixo executamos o seguinte: caso o botão esquerdo do mouse esteja
-    // pressionado, computamos quanto que o mouse se movimento desde o último
-    // instante de tempo, e usamos esta movimentação para atualizar os
-    // parâmetros que definem a posição da câmera dentro da cena virtual.
-    // Assim, temos que o usuário consegue controlar a câmera.
+    if(Camera.lookatID == -1){
+        // Abaixo executamos o seguinte: caso o botão esquerdo do mouse esteja
+        // pressionado, computamos quanto que o mouse se movimento desde o último
+        // instante de tempo, e usamos esta movimentação para atualizar os
+        // parâmetros que definem a posição da câmera dentro da cena virtual.
+        // Assim, temos que o usuário consegue controlar a câmera.
 
-    // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
-    float dx = xpos - g_LastCursorPosX;
-    float dy = ypos - g_LastCursorPosY;
+        // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
+        float dx = xpos - g_LastCursorPosX;
+        float dy = ypos - g_LastCursorPosY;
 
-    // Para a implementação da câmera livre considerou-se que o vetor
-    // view será modificado de acordo com normalização da soma do seu
-    // valor atual com os vetores de deslocamento em x e em y.
-    // Para fazer isso se considera o vetor up da câmera e se faz um
-    // produto vetorial entre ele e o view para se obter a direção de
-    // um vetor que possa representar o deslocamento horizontal.
-    // Em seguida usa-se esse vetor em um produto vetorial com view para
-    // se obter o vetor com a mesma direção do vetor que representará o
-    // deslocamento vertical
+        // Para a implementação da câmera livre considerou-se que o vetor
+        // view será modificado de acordo com normalização da soma do seu
+        // valor atual com os vetores de deslocamento em x e em y.
+        // Para fazer isso se considera o vetor up da câmera e se faz um
+        // produto vetorial entre ele e o view para se obter a direção de
+        // um vetor que possa representar o deslocamento horizontal.
+        // Em seguida usa-se esse vetor em um produto vetorial com view para
+        // se obter o vetor com a mesma direção do vetor que representará o
+        // deslocamento vertical
 
-    glm::vec4 HorizCrossProduct = crossproduct(Camera.camera_view, Camera.camera_up);
-    //hVec /= norm(hVec);
-    glm::vec4 hVec = HorizCrossProduct * (dx * cameraRotationSpeed);
+        glm::vec4 HorizCrossProduct = crossproduct(Camera.camera_view, Camera.camera_up);
+        //hVec /= norm(hVec);
+        glm::vec4 hVec = HorizCrossProduct * (dx * cameraRotationSpeed);
 
-    glm::vec4 vVec = -crossproduct(HorizCrossProduct, Camera.camera_view);;
+        glm::vec4 vVec = -crossproduct(HorizCrossProduct, Camera.camera_view);;
 
 
-    vVec /= norm(vVec);
-    vVec *= (dy * cameraRotationSpeed);
+        vVec /= norm(vVec);
+        vVec *= (dy * cameraRotationSpeed);
 
-    glm::vec4 newView = (Camera.camera_view + vVec + hVec)/norm(Camera.camera_view + vVec + hVec);
-    //evita que o vetor view fique na mesma direção do vetor up
+        glm::vec4 newView = (Camera.camera_view + vVec + hVec)/norm(Camera.camera_view + vVec + hVec);
+        //evita que o vetor view fique na mesma direção do vetor up
 
-    glm::vec4 oldViewVector = Camera.camera_view;
-    float y = fabs(newView.y);
+        glm::vec4 oldViewVector = Camera.camera_view;
+        float y = fabs(newView.y);
 
-    float maxy = 0.9f;
-    Camera.camera_view += (hVec);
-    Camera.camera_view /= norm(Camera.camera_view);
-
-    if(y<= maxy)
-    {
-
-        Camera.camera_view += (vVec);
+        float maxy = 0.9f;
+        Camera.camera_view += (hVec);
         Camera.camera_view /= norm(Camera.camera_view);
 
+        if(y<= maxy)
+        {
+
+            Camera.camera_view += (vVec);
+            Camera.camera_view /= norm(Camera.camera_view);
+
+        }
+
+        glm::vec4 newViewVector = Camera.camera_view;
+        //projeta no plano xz (horizontal)
+        float tempNewY = newViewVector.y;
+        float tempOldY = oldViewVector.y;
+        oldViewVector.y = 0.0f;
+        newViewVector.y = 0.0f;
+        float angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
+        if(angleWeapon>=1 || angleWeapon<=-1)  //necessário para acos() não retornar nan
+            angleWeapon = 0;
+        else
+            angleWeapon = acos(angleWeapon);
+        if(dx<0)
+        {
+            yRotation = yRotation + angleWeapon;
+        }
+        else
+            yRotation = yRotation - angleWeapon;
+
+        oldViewVector.y = tempOldY;
+        newViewVector.y = tempNewY;
+        //projeta no plano yz (vertical)
+        tempNewY = newViewVector.x;
+        tempOldY = oldViewVector.x;
+        oldViewVector.x = 0.0f;
+        newViewVector.x = 0.0f;
+        angleWeapon = dotproduct(baseWeaponVector, newViewVector)/(length(newViewVector) * length(baseWeaponVector));
+        if(angleWeapon>=1 || angleWeapon<=-1) //necessário para acos() não retornar nan
+            angleWeapon = 0;
+        else
+            angleWeapon = acos(angleWeapon);
+
+        float minX = -1.12;
+        float maxX = 1.12;
+        if(newViewVector.y<0)
+        {
+            xRotation = angleWeapon;
+        }
+        else
+            xRotation = -angleWeapon;
+
+        if(xRotation > M_PI/2){
+            xRotation = M_PI - xRotation;
+        }
+        else if(xRotation < - M_PI/2){
+            xRotation = -M_PI - xRotation;
+        }
+
+        if(xRotation > maxX){
+            xRotation = maxX;
+        }
+        else if(xRotation < minX){
+            xRotation = minX;
+        }
+        oldViewVector.x = tempOldY;
+        newViewVector.x = tempNewY;
+
+
+        // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
+
+        /*
+        phimax = 3.141592f/2;
+        phimin = -phimax;
+
+        if (g_CameraPhi > phimax)
+            g_CameraPhi = phimax;
+
+        if (g_CameraPhi < phimin)
+            g_CameraPhi = phimin;
+    */
+        // Atualizamos as variáveis globais para armazenar a posição atual do
+        // cursor como sendo a última posição conhecida do cursor.
+        g_LastCursorPosX = xpos;
+        g_LastCursorPosY = ypos;
+
     }
-    glm::vec4 newViewVector = Camera.camera_view;
-    //projeta no plano xz (horizontal)
-    float tempNewY = newViewVector.y;
-    float tempOldY = oldViewVector.y;
-    oldViewVector.y = 0.0f;
-    newViewVector.y = 0.0f;
-    float angleWeapon = dotproduct(oldViewVector, newViewVector)/(length(newViewVector) * length(oldViewVector));
-    if(angleWeapon>=1 || angleWeapon<=-1)  //necessário para acos() não retornar nan
-        angleWeapon = 0;
-    else
-        angleWeapon = acos(angleWeapon);
-    if(dx<0)
-    {
-        yRotation = yRotation + angleWeapon;
-    }
-    else
-        yRotation = yRotation - angleWeapon;
-
-    oldViewVector.y = tempOldY;
-    newViewVector.y = tempNewY;
-    //projeta no plano yz (vertical)
-    tempNewY = newViewVector.x;
-    tempOldY = oldViewVector.x;
-    oldViewVector.x = 0.0f;
-    newViewVector.x = 0.0f;
-    angleWeapon = dotproduct(baseWeaponVector, newViewVector)/(length(newViewVector) * length(baseWeaponVector));
-    if(angleWeapon>=1 || angleWeapon<=-1) //necessário para acos() não retornar nan
-        angleWeapon = 0;
-    else
-        angleWeapon = acos(angleWeapon);
-
-    float minX = -1.12;
-    float maxX = 1.12;
-    if(newViewVector.y<0)
-    {
-        xRotation = angleWeapon;
-    }
-    else
-        xRotation = -angleWeapon;
-
-    if(xRotation > M_PI/2){
-        xRotation = M_PI - xRotation;
-    }
-    else if(xRotation < - M_PI/2){
-        xRotation = -M_PI - xRotation;
-    }
-
-    if(xRotation > maxX){
-        xRotation = maxX;
-    }
-    else if(xRotation < minX){
-        xRotation = minX;
-    }
-    oldViewVector.x = tempOldY;
-    newViewVector.x = tempNewY;
-
-
-    // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
-
-    /*
-    phimax = 3.141592f/2;
-    phimin = -phimax;
-
-    if (g_CameraPhi > phimax)
-        g_CameraPhi = phimax;
-
-    if (g_CameraPhi < phimin)
-        g_CameraPhi = phimin;
-*/
-    // Atualizamos as variáveis globais para armazenar a posição atual do
-    // cursor como sendo a última posição conhecida do cursor.
-    g_LastCursorPosX = xpos;
-    g_LastCursorPosY = ypos;
-
 }
 
 // Função callback chamada sempre que o usuário movimenta a "rodinha" do mouse.
@@ -1949,6 +1972,7 @@ int createCow(double xpos, double zpos)
     calf->xpos = xpos;
     calf->zpos = zpos;
     calf->angle = 0;
+    calf->lookat = false;
     calf->angularMovementDirection = UP;
     calf->health = COW_LIFE;
 
@@ -1997,6 +2021,8 @@ void removeCow(int id)
 
     }
     else if(found){
+        if(tempCows->currentCow->lookat == true)
+            Camera.lookatID = -1;
         if(prevCows == NULL) // primeiro da lista
         {
             cows = tempCows->next;
@@ -2033,6 +2059,11 @@ void updateCows()
 
         currentCow->xpos += (desloc.x * cowSpeed * ellapsed_time);
         currentCow->zpos += (desloc.y * cowSpeed * ellapsed_time);
+        if(currentCow->lookat == true){
+            Camera.lookAtPoint = glm::vec4(currentCow->xpos, 0.0f, currentCow->zpos, 1.0f);
+            Camera.camera_view = (Camera.lookAtPoint - Camera.camera_position)/norm(Camera.lookAtPoint - Camera.camera_position);
+
+        }
         double distanceToCamera = sqrt(pow(currentCow->xpos - Camera.camera_position.x, 2) + pow(currentCow->zpos - Camera.camera_position.z, 2));
         if (distanceToCamera < minDistanceToCow){
             removeCow(currentCow->id);
@@ -2216,7 +2247,6 @@ void checkCollisionWithCows(glm::vec4 prevPos, glm::vec4 currentPos){
         while(tempBullets!=NULL){
             if (boundingBoxCollided(tempCows->currentCow, tempBullets->currentBullet->pos)){
                 tempCows->currentCow->health--;
-                //printf("vida: %d\n", tempCows->currentCow->health);
                 if(tempCows->currentCow->health == 0){
                     removeCow(tempCows->currentCow->id);
                     score = score + 25;
@@ -2266,6 +2296,83 @@ bool boundingBoxCollided(Cow* cow, glm::vec4 pos)
     return(pos.x >= downLeftFrontPnt.x && pos.x <= upRightBackPnt.x &&
        pos.y >= downLeftFrontPnt.y && pos.y <= upRightBackPnt.y &&
        pos.z >= downLeftFrontPnt.z && pos.z <= upRightBackPnt.z);
+}
+
+glm::vec4 infiniteLinePlaneCollision(glm::vec4 lineVec, glm::vec4 lineP, glm::vec4 planeP0, glm::vec4 planeP1, glm::vec4 planeP2){
+
+    glm::vec4 n = crossproduct(planeP1-planeP0,planeP2-planeP1);
+    float lDotn = dotproduct(lineVec, n);
+    float t;
+    if(lDotn != 0)
+            t = dotproduct((planeP0 - lineP), n)/dotproduct(lineVec, n);
+    glm::vec4 intersecP = glm::vec4(t*lineVec.x, t*lineVec.y, t*lineVec.z, lineVec.w) + lineP;
+    return intersecP;
+
+}
+
+Cow* getClosestCow(){
+    CowList* tempCows = cows;
+    Cow *closestCow = NULL;
+    float closestPoint = FLT_MAX;
+    glm::vec4 intersecP;
+    glm::vec4 intersecP2;
+    while(tempCows != NULL){
+        Cow* cow = tempCows->currentCow;
+        glm::vec4 downLeftFrontPnt = glm::vec4(cow->xpos -0.5, -0.8, cow->zpos -0.5, 1.0);
+
+        //plano frontal: pf1 inferior à direita, pf2 superior à direita
+        glm::vec4 pf1 = glm::vec4(cow->xpos +0.5, -0.8, cow->zpos -0.5, 1.0);
+        glm::vec4 pf2 = glm::vec4(cow->xpos +0.5, 0.8, cow->zpos -0.5, 1.0);
+        intersecP = infiniteLinePlaneCollision(Camera.camera_view, Camera.camera_position, downLeftFrontPnt, pf1, pf2);
+        if(intersecP.x <= cow->xpos +0.5 && intersecP.x >= cow->xpos -0.5)
+            if(intersecP.y <= 0.8 && intersecP.y >= -0.8)
+                if(intersecP.z<=cow->zpos +0.5 && intersecP.z>=cow->zpos -0.5)
+                {
+                    //printf("plano front: x-:%f x+:%f y-:-0.8 y+: 0.8 z-:%f z+:%f", cow->xpos -0.5, cow->xpos +0.5, cow->zpos -0.5, cow->zpos +0.5);
+                    //printf("\nx: %f y: %f z: %f\n", intersecP.x, intersecP.y, intersecP.z);
+                    //if(fabs(intersecP.z - (cow->zpos -0.5)) <= 0.00001 ) // precisamos de um delta, aparentemente as operações para achar o ponto no plano geram um ponto no eixo z que não está exatamente no eixo z do plano frontal da vaca
+                    if(norm(intersecP-Camera.camera_view)<closestPoint){
+                        closestPoint = norm(intersecP-Camera.camera_view);
+                        closestCow = tempCows->currentCow;
+                    }
+                }
+
+        //plano superior: pf7 frente à direita, pf8 fundo à direita
+        glm::vec4 pf7 = glm::vec4(cow->xpos +0.5, 0.8, cow->zpos -0.5, 1.0);
+        glm::vec4 pf8 = glm::vec4(cow->xpos +0.5, 0.8, cow->zpos +0.5, 1.0);
+        glm::vec4 upLeftFrontPnt = glm::vec4(cow->xpos -0.5, 0.8, cow->zpos -0.5, 1.0);
+        intersecP2 = infiniteLinePlaneCollision(Camera.camera_view, Camera.camera_position, upLeftFrontPnt, pf7, pf8);
+        if(intersecP2.x <= cow->xpos +0.5 && intersecP2.x >= cow->xpos -0.5)
+            if(intersecP2.y <= 0.8 &&  intersecP2.y >= -0.8)
+                 if(intersecP2.z <= cow->zpos +0.5 && intersecP2.z >= cow->zpos -0.5)
+                 {
+                    //printf("plano sup: x-:%f x+:%f y:-0.8 y+: 0.8 z-:%f z+:%f", cow->xpos -0.5, cow->xpos +0.5, cow->zpos -0.5, cow->zpos +0.5);
+                    //printf("\n\nx: %f y: %f z: %f\n", intersecP2.x, intersecP2.y, intersecP2.z);
+                    if(norm(intersecP2-Camera.camera_view)<closestPoint){
+                        //printf("selecionou vaca pelo plano superior\n\n");
+                        closestPoint = norm(intersecP2-Camera.camera_view);
+                        closestCow = tempCows->currentCow;
+                    }
+                 }
+        printf("planos: x-:%f x+:%f y:-0.8 y+: 0.8 z-:%f z+:%f", cow->xpos -0.5, cow->xpos +0.5, cow->zpos -0.5, cow->zpos +0.5);
+        printf("\nsup: x: %f y: %f z: %f\n", intersecP2.x, intersecP2.y, intersecP2.z);
+        printf("front: x: %f y: %f z: %f\n-------\n", intersecP.x, intersecP.y, intersecP.z);
+        /*
+        //plano à esquerda: pf3 inferior pro fundo, pf4 superior pro fundo
+        glm::vec4 pf3 = glm::vec4(cow->xpos -0.5, -0.8, cow->zpos +0.5, 1.0);
+        glm::vec4 pf4 = glm::vec4(cow->xpos -0.5, 0.8, cow->zpos +0.5, 1.0);
+        //infiniteLinePlaneCollision(Camera.camera_view, pointInLine, downLeftFrontPnt, pf3, pf4);
+
+        //plano à direita: pf5 inferior pra frente, pf6 superior pra frente
+        glm::vec4 pf5 = glm::vec4(cow->xpos + 0.5, -0.8, cow->zpos - 0.5, 1.0);
+        glm::vec4 pf6 = glm::vec4(cow->xpos + 0.5, 0.8, cow->zpos - 0.5, 1.0);
+        //infiniteLinePlaneCollision(Camera.camera_view, pointInLine, upRightBackPnt, pf5, pf6);
+        */
+
+        tempCows = tempCows->next;
+    }
+    free(tempCows);
+    return closestCow;
 }
 
 void cowsCollided(Cow* cow1, Cow* cow2){
