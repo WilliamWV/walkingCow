@@ -40,6 +40,7 @@
 
 #include <stb_image.h>
 
+//SOM
 #include <SFML/Audio.hpp>
 
 // Headers locais, definidos na pasta "include/"
@@ -305,6 +306,7 @@ float currentRecoilAngle = 0.0f;
 int recoilDirection = UP;
 float shotDelay = 0.35f; // em s
 float currentShotDelay = 0.0f;
+//SOM
 float currentSoundDelay = 0.35f;
 bool onRecoil = false;
 bool goingRight = false; // usado para rotacionar a arma e mira na camera lookat
@@ -354,6 +356,7 @@ Cam Camera;
 int debug = true;
 
 bool testIntersection = true;
+//SOM
 sf::Sound mooSound;
 sf::Sound bulletSound;
 
@@ -494,6 +497,7 @@ int main(int argc, char* argv[])
     //model = Matrix_Rotate_Y(150);
     float teste = 0.1;
 
+    //SOM
     sf::SoundBuffer buffer;
     if (!buffer.loadFromFile("../../data/Sounds/TWDsoundtrack.wav"))
         return -1;

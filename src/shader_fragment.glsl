@@ -40,6 +40,7 @@ uniform sampler2D TextureImage3;
 uniform sampler2D TextureImage4;
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec3 color;
+in float lambert_cos;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -84,6 +85,8 @@ void main()
 
     bool fixColorObject = false;
     bool lambertShading = false;
+    bool gouradShading = false;
+
     if ( object_id == COW )
     {
         // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
@@ -160,6 +163,7 @@ void main()
         Kd = vec3(0.7, 0.4, 0.1);
         Ka = vec3(0.2, 0.2, 0.2);
         lambertShading = true;
+        gouradShading = true;
     }
     else if(object_id == WORLDSPHERE){
         vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
@@ -194,7 +198,13 @@ void main()
     else if(lambertShading){
         vec3 I = vec3(1.0, 1.0, 1.0);
         vec3 Ia = vec3(0.05, 0.05, 0.05);
-        color = Kd*I*max(0.0, dot(n, l))+Ka*Ia;
+        if (gouradShading)
+        {
+            color = Kd * I * lambert_cos + Ka*Ia;
+        }
+        else{
+            color = Kd*I*max(0.0, dot(n, l))+Ka*Ia;
+        }
         color = pow(color, vec3(1.0,1.0,1.0)/2.2);
     }
     else{
