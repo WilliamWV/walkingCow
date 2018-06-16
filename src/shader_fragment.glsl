@@ -83,6 +83,7 @@ void main()
     float V = 0.0;
 
     bool fixColorObject = false;
+    bool lambertShading = false;
     if ( object_id == COW )
     {
         // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
@@ -120,9 +121,11 @@ void main()
 
         // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
         Kd = texture(TextureImage1, vec2(U,V)).rgb;
-        Ka = vec3(0.00, 0.00, 0.00);
-        Ks = vec3(0.0, 0.0, 0.0);
-        q = 1.0;
+        /*Ka = vec3(0.00, 0.00, 0.00);
+        Ks = vec3(0.0, 0.0, 0.0);*/
+        Ka = vec3(0.02, 0.02, 0.02);
+        Ks = vec3(0.01, 0.01, 0.01);
+        q = 8.0;
     }
     else if ( object_id == M4A1 )
     {
@@ -147,19 +150,7 @@ void main()
     }
     else if ( object_id == CHAIR )
     {
-        float minx = bbox_min.x;
-        float maxx = bbox_max.x;
-
-        float miny = bbox_min.y;
-        float maxy = bbox_max.y;
-
-        float minz = bbox_min.z;
-        float maxz = bbox_max.z;
-
-        U = (position_model.x -minx) / (maxx - minx);
-        V = (position_model.y -miny) / (maxy - miny);
-        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage3
-        Kd = texture(TextureImage3, vec2(U,V)).rgb;
+        Kd = vec3(1.0, 1.0, 0.0);
         Ka = vec3(0.0, 0.0, 0.0);
         Ks = vec3(0.0, 0.0, 0.0);
         q = 0.0;
@@ -168,8 +159,7 @@ void main()
     else if(object_id == BULLET){
         Kd = vec3(0.7, 0.4, 0.1);
         Ka = vec3(0.2, 0.2, 0.2);
-        Ks = vec3(0.1, 0.1, 0.1);
-        q = 128.0;
+        lambertShading = true;
     }
     else if(object_id == WORLDSPHERE){
         vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
@@ -200,6 +190,12 @@ void main()
     if (fixColorObject){
         color = Kd;
         color = pow(color, vec3(1.0, 1.0, 1.0)/2.2);
+    }
+    else if(lambertShading){
+        vec3 I = vec3(1.0, 1.0, 1.0);
+        vec3 Ia = vec3(0.05, 0.05, 0.05);
+        color = Kd*I*max(0.0, dot(n, l))+Ka*Ia;
+        color = pow(color, vec3(1.0,1.0,1.0)/2.2);
     }
     else{
         //espectro da fonte de iluminação

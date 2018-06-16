@@ -54,10 +54,13 @@
 			<Add option="-Wall" />
 			<Add option="-Wno-unused-function" />
 			<Add directory="include" />
+			<Add directory="D:/UFRGS/Quinto Semestre/FCG/TRABSON FINAL/The_Walking_Cow/SFML-2.5.0/include" />
 		</Compiler>
 		<Linker>
 			<Add option="lib\libglfw3.a -lgdi32 -lopengl32" />
+			<Add library="sfml-audio" />
 			<Add directory="lib" />
+			<Add directory="D:/UFRGS/Quinto Semestre/FCG/TRABSON FINAL/The_Walking_Cow/SFML-2.5.0/lib" />
 		</Linker>
 		<Unit filename="include/GLFW/glfw3.h" />
 		<Unit filename="include/GLFW/glfw3native.h" />

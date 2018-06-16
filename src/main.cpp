@@ -62,7 +62,7 @@
 #define COW_LIFE 5
 #define PLAYER_LIFE 3
 
-#define MAX_NUM_OF_COWS 15
+#define MAX_NUM_OF_COWS 1
 
 #define MAP_X_REPEAT 20 // repetições da textura no plano
 #define MAP_Z_REPEAT 20
@@ -601,7 +601,7 @@ int main(int argc, char* argv[])
         if(currentSoundDelay>0){
             currentSoundDelay = currentSoundDelay - ellapsed_time;
         }
-        printf("%f\n", ellapsed_time);
+        //printf("%f\n", ellapsed_time);
         if (onRecoil){
                 updateRecoil();
         }
@@ -2282,8 +2282,6 @@ void drawOutterSphere(){
         DrawVirtualObject("bullet");
 }
 
-//checa se o segmento de reta entre a posição antiga e a nova da bala colidem com alguma vaca, se sim
-//remove ambos
 void checkCollisionWithCows(glm::vec4 prevPos, glm::vec4 currentPos){
     CowList* tempCows = cows;
     while(tempCows!=NULL)
@@ -2351,8 +2349,8 @@ glm::vec4 infiniteLinePlaneCollision(glm::vec4 lineVec, glm::vec4 lineP, glm::ve
     if(lDotn != 0)
             t = dotproduct((planeP0 - lineP), n)/dotproduct(lineVec, n);
     glm::vec4 intersecP = glm::vec4(t*lineVec.x, t*lineVec.y, t*lineVec.z, lineVec.w) + lineP;
-    return intersecP;
 
+    return intersecP;
 }
 
 
