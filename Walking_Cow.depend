@@ -4296,7 +4296,7 @@
 	<inttypes.h>
 	<stdint.h>
 
-1529082908 source:d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\src\main.cpp
+1529113424 source:d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\src\main.cpp
 	<cmath>
 	<cstdio>
 	<cstdlib>
@@ -4318,6 +4318,7 @@
 	<glm/gtc/type_ptr.hpp>
 	<tiny_obj_loader.h>
 	<stb_image.h>
+	<SFML/Audio.hpp>
 	"utils.h"
 	"matrices.h"
 
@@ -4819,4 +4820,227 @@
 
 1528659665 source:d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\src\tiny_obj_loader.cpp
 	"tiny_obj_loader.h"
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio.hpp
+	<SFML/System.hpp>
+	<SFML/Audio/InputSoundFile.hpp>
+	<SFML/Audio/Listener.hpp>
+	<SFML/Audio/Music.hpp>
+	<SFML/Audio/OutputSoundFile.hpp>
+	<SFML/Audio/Sound.hpp>
+	<SFML/Audio/SoundBuffer.hpp>
+	<SFML/Audio/SoundBufferRecorder.hpp>
+	<SFML/Audio/SoundFileFactory.hpp>
+	<SFML/Audio/SoundFileReader.hpp>
+	<SFML/Audio/SoundFileWriter.hpp>
+	<SFML/Audio/SoundRecorder.hpp>
+	<SFML/Audio/SoundSource.hpp>
+	<SFML/Audio/SoundStream.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system.hpp
+	<SFML/Config.hpp>
+	<SFML/System/Clock.hpp>
+	<SFML/System/Err.hpp>
+	<SFML/System/FileInputStream.hpp>
+	<SFML/System/InputStream.hpp>
+	<SFML/System/Lock.hpp>
+	<SFML/System/MemoryInputStream.hpp>
+	<SFML/System/Mutex.hpp>
+	<SFML/System/NonCopyable.hpp>
+	<SFML/System/Sleep.hpp>
+	<SFML/System/String.hpp>
+	<SFML/System/Thread.hpp>
+	<SFML/System/ThreadLocal.hpp>
+	<SFML/System/ThreadLocalPtr.hpp>
+	<SFML/System/Time.hpp>
+	<SFML/System/Utf.hpp>
+	<SFML/System/Vector2.hpp>
+	<SFML/System/Vector3.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\config.hpp
+	"TargetConditionals.h"
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\clock.hpp
+	<SFML/System/Export.hpp>
+	<SFML/System/Time.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\export.hpp
+	<SFML/Config.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\time.hpp
+	<SFML/System/Export.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\err.hpp
+	<SFML/System/Export.hpp>
+	<ostream>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\fileinputstream.hpp
+	<SFML/Config.hpp>
+	<SFML/System/Export.hpp>
+	<SFML/System/InputStream.hpp>
+	<SFML/System/NonCopyable.hpp>
+	<cstdio>
+	<string>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\inputstream.hpp
+	<SFML/Config.hpp>
+	<SFML/System/Export.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\noncopyable.hpp
+	<SFML/System/Export.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\lock.hpp
+	<SFML/System/Export.hpp>
+	<SFML/System/NonCopyable.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\memoryinputstream.hpp
+	<SFML/Config.hpp>
+	<SFML/System/InputStream.hpp>
+	<SFML/System/Export.hpp>
+	<cstdlib>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\mutex.hpp
+	<SFML/System/Export.hpp>
+	<SFML/System/NonCopyable.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\sleep.hpp
+	<SFML/System/Export.hpp>
+	<SFML/System/Time.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\string.hpp
+	<SFML/System/Export.hpp>
+	<SFML/System/Utf.hpp>
+	<iterator>
+	<locale>
+	<string>
+	<SFML/System/String.inl>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\utf.hpp
+	<SFML/Config.hpp>
+	<algorithm>
+	<locale>
+	<string>
+	<cstdlib>
+	<SFML/System/Utf.inl>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\utf.inl
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\string.inl
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\thread.hpp
+	<SFML/System/Export.hpp>
+	<SFML/System/NonCopyable.hpp>
+	<cstdlib>
+	<SFML/System/Thread.inl>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\thread.inl
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\threadlocal.hpp
+	<SFML/System/Export.hpp>
+	<SFML/System/NonCopyable.hpp>
+	<cstdlib>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\threadlocalptr.hpp
+	<SFML/System/ThreadLocal.hpp>
+	<SFML/System/ThreadLocalPtr.inl>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\threadlocalptr.inl
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\vector2.hpp
+	<SFML/System/Vector2.inl>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\vector2.inl
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\vector3.hpp
+	<SFML/System/Vector3.inl>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\system\vector3.inl
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\inputsoundfile.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/System/NonCopyable.hpp>
+	<SFML/System/Time.hpp>
+	<string>
+	<algorithm>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\export.hpp
+	<SFML/Config.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\listener.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/System/Vector3.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\music.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/Audio/SoundStream.hpp>
+	<SFML/Audio/InputSoundFile.hpp>
+	<SFML/System/Mutex.hpp>
+	<SFML/System/Time.hpp>
+	<string>
+	<vector>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundstream.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/Audio/SoundSource.hpp>
+	<SFML/System/Thread.hpp>
+	<SFML/System/Time.hpp>
+	<SFML/System/Mutex.hpp>
+	<cstdlib>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundsource.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/Audio/AlResource.hpp>
+	<SFML/System/Vector3.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\alresource.hpp
+	<SFML/Audio/Export.hpp>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\outputsoundfile.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/System/NonCopyable.hpp>
+	<string>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\sound.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/Audio/SoundSource.hpp>
+	<SFML/System/Time.hpp>
+	<cstdlib>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundbuffer.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/Audio/AlResource.hpp>
+	<SFML/System/Time.hpp>
+	<string>
+	<vector>
+	<set>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundbufferrecorder.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/Audio/SoundBuffer.hpp>
+	<SFML/Audio/SoundRecorder.hpp>
+	<vector>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundrecorder.hpp
+	<SFML/Audio/Export.hpp>
+	<SFML/Audio/AlResource.hpp>
+	<SFML/System/Thread.hpp>
+	<SFML/System/Time.hpp>
+	<vector>
+	<string>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundfilefactory.hpp
+	<SFML/Audio/Export.hpp>
+	<string>
+	<vector>
+	<SFML/Audio/SoundFileFactory.inl>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundfilefactory.inl
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundfilereader.hpp
+	<SFML/Audio/Export.hpp>
+	<string>
+
+1529110489 d:\ufrgs\quinto semestre\fcg\trabson final\the_walking_cow\sfml-2.5.0\include\sfml\audio\soundfilewriter.hpp
+	<SFML/Audio/Export.hpp>
+	<string>
 

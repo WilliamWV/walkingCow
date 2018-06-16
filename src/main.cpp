@@ -40,6 +40,8 @@
 
 #include <stb_image.h>
 
+#include <SFML/Audio.hpp>
+
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
 #include "matrices.h"
@@ -60,7 +62,7 @@
 #define COW_LIFE 5
 #define PLAYER_LIFE 3
 
-#define MAX_NUM_OF_COWS 1
+#define MAX_NUM_OF_COWS 15
 
 #define MAP_X_REPEAT 20 // repetições da textura no plano
 #define MAP_Z_REPEAT 20
@@ -301,8 +303,9 @@ float balanceSpeed = 7*M_PI;
 float recoilSpeed = M_PI/2;
 float currentRecoilAngle = 0.0f;
 int recoilDirection = UP;
-float shotDelay = 0.1f; // em s
+float shotDelay = 0.35f; // em s
 float currentShotDelay = 0.0f;
+float currentSoundDelay = 0.35f;
 bool onRecoil = false;
 bool goingRight = false; // usado para rotacionar a arma e mira na camera lookat
 
@@ -351,6 +354,8 @@ Cam Camera;
 int debug = true;
 
 bool testIntersection = true;
+sf::Sound mooSound;
+sf::Sound bulletSound;
 
 int main(int argc, char* argv[])
 {
@@ -489,6 +494,28 @@ int main(int argc, char* argv[])
     //model = Matrix_Rotate_Y(150);
     float teste = 0.1;
 
+    sf::SoundBuffer buffer;
+    if (!buffer.loadFromFile("../../data/Sounds/TWDsoundtrack.wav"))
+        return -1;
+    sf::Sound soundtrack;
+    soundtrack.setBuffer(buffer);
+    soundtrack.setVolume(50);
+    soundtrack.setLoop(true);
+    soundtrack.play();
+
+    sf::SoundBuffer buffer2;
+    if (!buffer2.loadFromFile("../../data/Sounds/moo.wav"))
+        return -1;
+    mooSound.setBuffer(buffer2);
+    mooSound.setVolume(50);
+
+    sf::SoundBuffer buffer3;
+    if (!buffer3.loadFromFile("../../data/Sounds/bulletSound.wav"))
+        return -1;
+    bulletSound.setBuffer(buffer3);
+    bulletSound.setVolume(50);
+
+
 
     while (!glfwWindowShouldClose(window))
     {
@@ -571,12 +598,20 @@ int main(int argc, char* argv[])
         if (currentShotDelay > 0){
             currentShotDelay -= ellapsed_time;
         }
+        if(currentSoundDelay>0){
+            currentSoundDelay = currentSoundDelay - ellapsed_time;
+        }
+        printf("%f\n", ellapsed_time);
         if (onRecoil){
                 updateRecoil();
         }
         if (g_LeftMouseButtonPressed){
             if(currentShotDelay <= 0){
                 shoot();
+            }
+            if(currentSoundDelay<=0){
+                bulletSound.play();
+                currentSoundDelay = 0.35f;
             }
         }
 
@@ -1264,7 +1299,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // g_LastCursorPosY.  Também, setamos a variável
         // g_RightMouseButtonPressed como true, para saber que o usuário está
         // com o botão esquerdo pressionado.
-        if(testIntersection==true){
+        if(testIntersection==true && Camera.lookatID==-1){
             Cow *closestCow = getClosestCow();
             if(closestCow != NULL){
                 closestCow->lookat = true;
@@ -1319,7 +1354,7 @@ void updateAngles(glm::vec4 oldViewVector, glm::vec4 newViewVector, int hDesloc)
     else
         angleWeapon = acos(angleWeapon);
 
-    printf("View = x : %f, y : %f, z : %f\n", newViewVector.x, newViewVector.y, newViewVector.z );
+    //printf("View = x : %f, y : %f, z : %f\n", newViewVector.x, newViewVector.y, newViewVector.z );
     if(newViewVector.z < 0)
     {
         yRotation = angleWeapon - 2.25;
@@ -1445,6 +1480,12 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Se o usuário pressionar a tecla ESC, fechamos a janela.
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+
+    if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS)
+        movementSpeed = 6.0f;
+
+    if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_RELEASE)
+        movementSpeed = 3.0f;
 
     //Mover para frente
     if(key == GLFW_KEY_W)
@@ -2069,6 +2110,8 @@ void updateCows()
         double distanceToCamera = sqrt(pow(currentCow->xpos - Camera.camera_position.x, 2) + pow(currentCow->zpos - Camera.camera_position.z, 2));
         if (distanceToCamera < minDistanceToCow){
             removeCow(currentCow->id);
+            mooSound.play();
+            score = score - 100;
         }
         double angle;
         if (currentCow->angularMovementDirection == UP){
